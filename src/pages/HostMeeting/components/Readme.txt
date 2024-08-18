@@ -1,0 +1,4 @@
+I want to add these below:
+Once the Host start the meeting, the agora meeting will start and also the video interface, mic button, video button, emoji button, screen share button, raised hand buttons, record button, leave buttons must be included. If I close mic or video, it must show me with the icon also.
+
+for the join users part, I want when they are in 'Enter your name' part, I also want to add a video display so the users can see the Ready to Join screen and they can prepare them. And also same buttons for join users with the host. If it is possible to show the network connection status, I also want to add that.

@@ -1,45 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import {
   Typography,
   Button,
-  CircularProgress,
-  Snackbar,
-  Alert,
   Drawer,
   Box,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
-import InfoIcon from '@mui/icons-material/Info';
-
+import InfoIcon from "@mui/icons-material/Info";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
-import { onMessage } from "firebase/messaging";
-import { messaging } from "../utils/firebaseUtils";
 
-const HostMeeting = () => {
-  // Drawer
-  const [stage, setStage] = React.useState({
-    right: false,
-  });
-
-  const toggleDrawer = (anchor, open) => (event) => {
-    if (
-      event.type === "keydown" &&
-      (event.key === "Tab" || event.key === "Shift")
-    ) {
-      return;
-    }
-
-    setStage({ ...stage, [anchor]: open });
-  };
-
+const MeetingDrawer = () => {
   const list = (anchor) => (
-    <Box
-      sx={{ width: 250, padding: "10px" }}
-      role="presentation"
-      // onClick={toggleDrawer(anchor, false)}
-      // onKeyDown={toggleDrawer(anchor, false)}
-    >
+    <Box sx={{ width: 250, padding: "10px" }} role="presentation">
       <div style={{ marginTop: "20px" }}>
         <Typography
           variant="body1"
@@ -90,53 +64,25 @@ const HostMeeting = () => {
     </Box>
   );
 
-  // Drawer End
   const { state } = useLocation();
   const { channelName, token } = state || {};
   const [copySuccess, setCopySuccess] = useState("");
   const [copyLinkSuccess, setCopyLinkSuccess] = useState("");
   const [shortLink, setShortLink] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = React.useState({
+    right: false,
+  });
 
-  const [notifications, setNotifications] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [currentNotification, setCurrentNotification] = useState(null);
-
-  useEffect(() => {
-    const handleMessage = (payload) => {
-      console.log("Received background message:", payload);
-      setNotifications((prev) => [...prev, payload]);
-    };
-
-    onMessage(messaging, handleMessage);
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
-
-  useEffect(() => {
-    if (notifications.length > 0) {
-      setCurrentNotification(notifications[0]);
-      setOpen(true);
+  const toggleDrawer = (anchor, open) => (event) => {
+    if (
+      event.type === "keydown" &&
+      (event.key === "Tab" || event.key === "Shift")
+    ) {
+      return;
     }
-  }, [notifications]);
 
-  const handleClose = () => {
-    setOpen(false);
-    setNotifications((prev) => prev.slice(1)); // Remove the handled notification
-  };
-
-  const handleAccept = () => {
-    console.log("Accepted:", currentNotification);
-    // Handle accept action here
-    handleClose();
-  };
-
-  const handleReject = () => {
-    console.log("Rejected:", currentNotification);
-    // Handle reject action here
-    handleClose();
+    setStage({ ...stage, [anchor]: open });
   };
 
   const meetingLink = `http://localhost:5173/join?channelName=${encodeURIComponent(
@@ -195,47 +141,19 @@ const HostMeeting = () => {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Typography variant="h5">Host a New Meeting</Typography>
-
-      {/* Drawer */}
-      <React.Fragment key="right">
-        <IconButton onClick={toggleDrawer("right", true)}>
-          <InfoIcon />
-        </IconButton>
-        <Drawer
-          anchor="right"
-          open={stage.right}
-          onClose={toggleDrawer("right", false)}
-        >
-          {list("right")}
-        </Drawer>
-      </React.Fragment>
-      {/* Drawer End */}
-
-      {/* Display notification */}
-      <Snackbar
-        open={open}
-        autoHideDuration={6000}
-        onClose={handleClose}
-        message={currentNotification?.data?.chatUserName}
-        action={
-          <>
-            <Button color="inherit" onClick={handleAccept}>
-              Accept
-            </Button>
-            <Button color="inherit" onClick={handleReject}>
-              Reject
-            </Button>
-          </>
-        }
+    <>
+      <IconButton onClick={toggleDrawer("right", true)}>
+        <InfoIcon />
+      </IconButton>
+      <Drawer
+        anchor="right"
+        open={stage.right}
+        onClose={toggleDrawer("right", false)}
       >
-        {/* <Alert onClose={handleClose} severity="info" sx={{ width: "100%" }}>
-          {currentNotification?.data?.title}
-        </Alert> */}
-      </Snackbar>
-    </div>
+        {list("right")}
+      </Drawer>
+    </>
   );
 };
 
-export default HostMeeting;
+export default MeetingDrawer;

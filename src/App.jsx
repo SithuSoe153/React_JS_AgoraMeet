@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Login from './components/Login';
-import HostMeeting from './components//HostMeeting';
-import JoinMeeting from './components//JoinMeeting';
+import Login from './pages/Login';
+import HostMeeting from './pages/HostMeeting/HostMeeting';
+import JoinMeeting from './pages/JoinMeeting';
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/firebase-messaging-sw.js')
