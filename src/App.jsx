@@ -1,61 +1,31 @@
-// src/App.jsx
-import React, { useState } from "react";
-import Login from "./components/Login";
-import { Button, Typography } from "@mui/material";
+// App.jsx
 
-const App = () => {
-  const [hostInfo, setHostInfo] = useState(null);
-  const [copySuccess, setCopySuccess] = useState("");
-  
-  const handleLogin = (info) => {
-    setHostInfo(info);
-  };
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Login from './components/Login';
+import HostMeeting from './components//HostMeeting';
+import JoinMeeting from './components//JoinMeeting';
 
-  const copyToClipboard = () => {
-    const link = `http://localhost:5173/join/${hostInfo.channelName}`;
-    navigator.clipboard
-      .writeText(link)
-      .then(() => {
-        setCopySuccess("Link copied to clipboard!");
-      })
-      .catch((err) => {
-        setCopySuccess("Failed to copy link");
-      });
-  };
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    .then((registration) => {
+      console.log('Service Worker registered with scope:', registration.scope);
+    }).catch((error) => {
+      console.error('Service Worker registration failed:', error);
+    });
+}
 
+
+function App() {
   return (
-    <div style={{ padding: "20px" }}>
-      {!hostInfo ? (
-        <Login onLogin={handleLogin} />
-      ) : (
-        <div>
-          <Typography variant="h5">Welcome, {hostInfo.username}</Typography>
-          <Typography variant="body1">
-            Channel Name: {hostInfo.channelName}
-          </Typography>
-          <Typography variant="body2" style={{ marginTop: "10px" }}>
-            Share this link to join:
-          </Typography>
-          <Typography
-            variant="body1"
-            style={{ fontWeight: "bold", marginBottom: "10px" }}
-          >
-            {`http://localhost:5173/join/${hostInfo.channelName}`}
-          </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={copyToClipboard}
-          >
-            Copy Link
-          </Button>
-          {copySuccess && (
-            <Typography style={{ marginTop: "10px" }}>{copySuccess}</Typography>
-          )}
-        </div>
-      )}
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/host" element={<HostMeeting />} />
+        <Route path="/join" element={<JoinMeeting />} />
+      </Routes>
+    </Router>
   );
-};
+}
 
 export default App;
