@@ -16,7 +16,6 @@ const HostMeeting = () => {
       {/* Display notification */}
       <NotificationSnackbar />
 
-      <ScreenSharingComponent />
       {/* Drawer */}
       <MeetingDrawer />
     </div>
