@@ -6,7 +6,7 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
-import HandIcon from '@mui/icons-material/ThumbUpAlt';
+import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';import HandIcon from '@mui/icons-material/ThumbUpAlt';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import { useLocation } from "react-router-dom";
@@ -111,21 +111,53 @@ const HostComponent = () => {
     cameraOn ? localTracks[1].setEnabled(false) : localTracks[1].setEnabled(true);
     setCameraOn((prev) => !prev);
   };
+  
 
-  const toggleScreenShare = async () => {
-    if (screenShareOn) {
-      const [screenTrack] = localTracks.filter((track) => track.mediaStreamTrack?.getSettings()?.deviceId);
-      if (screenTrack) {
-        screenTrack.stop();
-        setScreenShareOn(false);
-      }
-    } else {
-      const screenTrack = await AgoraRTC.createScreenVideoTrack();
-      setLocalTracks((prev) => [...prev, screenTrack]);
-      await client.publish(screenTrack);
-      setScreenShareOn(true);
+  
+const toggleScreenShare = async () => {
+  if (screenShareOn) {
+    const screenTrack = localTracks.find(track => track.type === 'video' && track.source === 'screen');
+    if (screenTrack) {
+      await client.unpublish(screenTrack);
+      screenTrack.stop();
+      setLocalTracks(prev => prev.filter(track => track !== screenTrack));
+      setScreenShareOn(false);
+
+      // Re-publish the camera track if it was stopped earlier
+      const cameraTrack = await AgoraRTC.createCameraVideoTrack();
+      setLocalTracks(prev => [...prev, cameraTrack]);
+      await client.publish(cameraTrack);
+      cameraTrack.play('local-player');
     }
-  };
+  } else {
+    try {
+      // Unpublish the camera track before starting screen share
+      const cameraTrack = localTracks.find(track => track.type === 'video' && track.source !== 'screen');
+      if (cameraTrack) {
+        await client.unpublish(cameraTrack);
+        cameraTrack.stop();
+        setLocalTracks(prev => prev.filter(track => track !== cameraTrack));
+      }
+
+      const screenTrack = await AgoraRTC.createScreenVideoTrack({
+        encoderConfig: "1080p_1",
+        optimizationMode: "detail"
+      });
+      await client.publish(screenTrack);
+      setLocalTracks(prev => [...prev, screenTrack]);
+      setScreenShareOn(true);
+
+      // Play screen share on the local player
+      screenTrack.play('local-player');
+    } catch (error) {
+      console.error("Failed to start screen share:", error);
+    }
+  }
+};
+
+
+  
+  
 
   const toggleRecording = () => {
     setRecording((prev) => !prev);
@@ -156,7 +188,7 @@ const HostComponent = () => {
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
         <Button onClick={toggleScreenShare}>
-          <ScreenShareIcon />
+          {screenShareOn ? <StopScreenShareIcon /> : <ScreenShareIcon />}
         </Button>
         <Button onClick={toggleHand}>
           <HandIcon />

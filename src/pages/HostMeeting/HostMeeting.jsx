@@ -4,6 +4,7 @@ import { Typography } from "@mui/material";
 import NotificationSnackbar from "./components/NotificationSnackbar";
 import MeetingDrawer from "./components/MeetingDrawer";
 import HostComponent from "./components/HostComponent";
+import ScreenSharingComponent from "./components/ScreenSharingComponent";
 
 const HostMeeting = () => {
   return (
@@ -12,11 +13,12 @@ const HostMeeting = () => {
 
       <HostComponent />
 
-      {/* Drawer */}
-      <MeetingDrawer />
-
       {/* Display notification */}
       <NotificationSnackbar />
+
+      <ScreenSharingComponent />
+      {/* Drawer */}
+      <MeetingDrawer />
     </div>
   );
 };
