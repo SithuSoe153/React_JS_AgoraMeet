@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
-import { Button, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import { useLocation } from "react-router-dom";
 
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 
-const ScreenSharingComponent = () => {
+const ScreenSharingButtonComponent = () => {
   const { state } = useLocation();
   const { channelName, token } = state || {};
 
@@ -42,7 +42,7 @@ const ScreenSharingComponent = () => {
       // Publish the screen video track
       await client.publish(screenTrack);
 
-      screenTrack.play("local-player");
+      screenTrack.play("local-screen-player");
 
       screenTrack.on("track-ended", () => {
         console.log("Screen sharing stopped");
@@ -83,4 +83,4 @@ const ScreenSharingComponent = () => {
   );
 };
 
-export default ScreenSharingComponent;
+export default ScreenSharingButtonComponent;

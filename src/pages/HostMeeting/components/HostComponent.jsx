@@ -9,7 +9,7 @@ import HandIcon from "@mui/icons-material/ThumbUpAlt";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { useLocation } from "react-router-dom";
-import ScreenSharingComponent from "./ScreenSharingComponent";
+import ScreenSharingButtonComponent from "./ScreenSharingButtonComponent";
 
 const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
@@ -41,13 +41,6 @@ const HostComponent = () => {
         if (isMounted) {
           setLocalTracks([microphoneTrack, cameraTrack]);
 
-          const localContainer = document.createElement("div");
-          localContainer.id = "local-player";
-          localContainer.style.width = "100%";
-          localContainer.style.height = "500px";
-          localContainer.style.backgroundColor = "#000";
-          document.body.append(localContainer);
-
           cameraTrack.play("local-player");
           await client.publish([microphoneTrack, cameraTrack]);
 
@@ -55,15 +48,9 @@ const HostComponent = () => {
             await client.subscribe(user, mediaType);
             if (mediaType === "video") {
               const remoteVideoTrack = user.videoTrack;
-              const remoteContainer = document.createElement("div");
-              remoteContainer.id = `remote-player-${user.uid}`;
-              remoteContainer.style.width = "100%";
-              remoteContainer.style.height = "240px";
-              remoteContainer.style.backgroundColor = "#000";
-              document.body.append(remoteContainer);
 
               remoteVideoTrack.play(`remote-player-${user.uid}`);
-              setRemoteUsers((prev) => [...prev, user]);
+              setRemoteUsers((prev) => [...prev, user]); // Add the user to the remoteUsers array
             }
             if (mediaType === "audio") {
               user.audioTrack.play();
@@ -113,7 +100,6 @@ const HostComponent = () => {
     setCameraOn((prev) => !prev);
   };
 
-
   const toggleRecording = () => {
     setRecording((prev) => !prev);
   };
@@ -135,6 +121,29 @@ const HostComponent = () => {
   return (
     <div>
       <Typography variant="h5">Host Meeting</Typography>
+
+      <div
+        id="local-player"
+        style={{
+          width: "100%",
+          height: "550px",
+          borderRadius: "20px",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      ></div>
+
+      <div
+        id="local-screen-player"
+        style={{
+          width: "100%",
+          height: "550px",
+          borderRadius: "20px",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      ></div>
+
       <div>
         <Button onClick={toggleMic}>
           {micOn ? <MicIcon /> : <MicOffIcon />}
@@ -142,7 +151,9 @@ const HostComponent = () => {
         <Button onClick={toggleCamera}>
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
-       <ScreenSharingComponent/>
+
+        <ScreenSharingButtonComponent />
+
         <Button onClick={toggleHand}>
           <HandIcon />
         </Button>
@@ -153,12 +164,20 @@ const HostComponent = () => {
           <ExitToAppIcon />
         </Button>
       </div>
+
       <div>
         {remoteUsers.map((user) => (
-          <div key={user.uid}>
-            {user.videoTrack && <div id={`remote-${user.uid}`} />}
-            {/* {user.audioTrack && <div>Audio for {user.uid}</div>} */}
-          </div>
+          <div
+            key={user.uid}
+            id={`remote-player-${user.uid}`}
+            style={{
+              width: "100%",
+              height: "200px",
+              marginTop: "10px",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          />
         ))}
       </div>
     </div>
