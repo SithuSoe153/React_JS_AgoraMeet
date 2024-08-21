@@ -55,8 +55,25 @@ const HostComponent = () => {
               remotePlayerContainer.style.height = "500px";
               remotePlayerContainer.style.borderRadius = "10px";
               remotePlayerContainer.style.marginTop = "20px";
+              remotePlayerContainer.style.position = "relative"; // Add relative positioning
               remotePlayerContainer.style.backgroundColor = "#000";
-              document.getElementById("remote-players").append(remotePlayerContainer);
+
+              // Create a container for the username
+              const usernameOverlay = document.createElement("div");
+              usernameOverlay.style.position = "absolute";
+              usernameOverlay.style.bottom = "10px";
+              usernameOverlay.style.left = "10px";
+              usernameOverlay.style.color = "#fff";
+              usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+              usernameOverlay.style.padding = "5px 10px";
+              usernameOverlay.style.borderRadius = "5px";
+              usernameOverlay.style.zIndex = "10";
+              usernameOverlay.innerText = user.uid; // Replace user.uid with user.name if available
+
+              remotePlayerContainer.appendChild(usernameOverlay);
+              document
+                .getElementById("remote-players")
+                .append(remotePlayerContainer);
 
               remoteVideoTrack.play(remotePlayerContainer.id);
               setRemoteUsers((prev) => [...prev, user]);
@@ -99,7 +116,9 @@ const HostComponent = () => {
 
   const toggleMic = () => {
     if (localTracks[0]) {
-      micOn ? localTracks[0].setEnabled(false) : localTracks[0].setEnabled(true);
+      micOn
+        ? localTracks[0].setEnabled(false)
+        : localTracks[0].setEnabled(true);
       setMicOn((prev) => !prev);
     }
   };

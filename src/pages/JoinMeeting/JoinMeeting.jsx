@@ -13,7 +13,7 @@ const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
 const JoinMeeting = () => {
   const [localTracks, setLocalTracks] = useState([]);
-  const [remoteUsers, setRemoteUsers] = useState([]);
+  const [remoteUsers, setRemoteUsers] = useState({});
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
   const [username, setUsername] = useState("");
@@ -74,10 +74,11 @@ const JoinMeeting = () => {
       remotePlayerContainer.style.width = "100%";
       remotePlayerContainer.style.height = "200px";
       remotePlayerContainer.style.backgroundColor = "#000";
+      remotePlayerContainer.innerText = user.uid; // Displaying user ID
       document.getElementById("remote-players").append(remotePlayerContainer);
 
       remoteVideoTrack.play(remotePlayerContainer.id);
-      setRemoteUsers((prev) => [...prev, user]);
+      setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
     }
 
     if (mediaType === "audio") {
@@ -92,7 +93,10 @@ const JoinMeeting = () => {
     if (remoteContainer) {
       remoteContainer.remove();
     }
-    setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
+    setRemoteUsers((prev) => {
+      const { [user.uid]: removedUser, ...remainingUsers } = prev;
+      return remainingUsers;
+    });
   };
 
   const toggleMic = () => {
@@ -127,7 +131,7 @@ const JoinMeeting = () => {
       });
       await client.leave();
       setLocalTracks([]);
-      setRemoteUsers([]);
+      setRemoteUsers({});
       client.removeAllListeners(); // Remove all event listeners
       setJoined(false); // Mark as not joined
     } catch (error) {
@@ -167,7 +171,26 @@ const JoinMeeting = () => {
           position: "relative",
           marginTop: "20px",
         }}
-      ></div>
+      >
+        {username && (
+          <Typography
+            variant="h6"
+            style={{
+              position: "absolute",
+              marginTop: "300px",
+              bottom: "10px",
+              left: "10px",
+              color: "#fff",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              padding: "5px 10px",
+              borderRadius: "5px",
+              zIndex: 1,
+            }}
+          >
+            {username}
+          </Typography>
+        )}
+      </div>
 
       <div>
         <Button onClick={toggleMic}>
