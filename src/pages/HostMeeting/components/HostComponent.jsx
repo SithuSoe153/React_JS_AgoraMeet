@@ -46,11 +46,20 @@ const HostComponent = () => {
 
           client.on("user-published", async (user, mediaType) => {
             await client.subscribe(user, mediaType);
-            if (mediaType === "video") {
+            if (mediaType === "video" || mediaType === "screen") {
               const remoteVideoTrack = user.videoTrack;
 
-              remoteVideoTrack.play(`remote-player-${user.uid}`);
-              setRemoteUsers((prev) => [...prev, user]); // Add the user to the remoteUsers array
+              const remotePlayerContainer = document.createElement("div");
+              remotePlayerContainer.id = `remote-player-${user.uid}`;
+              remotePlayerContainer.style.width = "100%";
+              remotePlayerContainer.style.height = "500px";
+              remotePlayerContainer.style.borderRadius = "10px";
+              remotePlayerContainer.style.marginTop = "20px";
+              remotePlayerContainer.style.backgroundColor = "#000";
+              document.getElementById("remote-players").append(remotePlayerContainer);
+
+              remoteVideoTrack.play(remotePlayerContainer.id);
+              setRemoteUsers((prev) => [...prev, user]);
             }
             if (mediaType === "audio") {
               user.audioTrack.play();
@@ -76,52 +85,60 @@ const HostComponent = () => {
 
     return () => {
       isMounted = false;
-
       localTracks.forEach((track) => {
         track.stop();
         track.close();
       });
-
-      client.leave().catch((error) => {
-        console.error("Failed to leave the channel:", error);
+      client.leave().then(() => {
+        setLocalTracks([]);
+        setRemoteUsers([]);
+        client.removeAllListeners(); // Remove all event listeners
       });
     };
-  }, [channelName, token]);
+  }, [token, channelName]);
 
   const toggleMic = () => {
-    micOn ? localTracks[0].setEnabled(false) : localTracks[0].setEnabled(true);
-    setMicOn((prev) => !prev);
+    if (localTracks[0]) {
+      micOn ? localTracks[0].setEnabled(false) : localTracks[0].setEnabled(true);
+      setMicOn((prev) => !prev);
+    }
   };
 
   const toggleCamera = () => {
-    cameraOn
-      ? localTracks[1].setEnabled(false)
-      : localTracks[1].setEnabled(true);
-    setCameraOn((prev) => !prev);
+    if (localTracks[1]) {
+      cameraOn
+        ? localTracks[1].setEnabled(false)
+        : localTracks[1].setEnabled(true);
+      setCameraOn((prev) => !prev);
+    }
   };
 
   const toggleRecording = () => {
     setRecording((prev) => !prev);
   };
 
-  const toggleHand = () => {
+  const toggleHandRaised = () => {
     setHandRaised((prev) => !prev);
   };
 
-  const leaveChannel = () => {
-    localTracks.forEach((track) => {
-      track.stop();
-      track.close();
-    });
-    client.leave().catch((error) => {
+  const leaveChannel = async () => {
+    try {
+      localTracks.forEach((track) => {
+        track.stop();
+        track.close();
+      });
+      await client.leave();
+      setLocalTracks([]);
+      setRemoteUsers([]);
+      client.removeAllListeners(); // Remove all event listeners
+    } catch (error) {
       console.error("Failed to leave the channel:", error);
-    });
+    }
   };
 
   return (
     <div>
       <Typography variant="h5">Host Meeting</Typography>
-
       <div
         id="local-player"
         style={{
@@ -130,17 +147,7 @@ const HostComponent = () => {
           borderRadius: "20px",
           overflow: "hidden",
           position: "relative",
-        }}
-      ></div>
-
-      <div
-        id="local-screen-player"
-        style={{
-          width: "100%",
-          height: "550px",
-          borderRadius: "20px",
-          overflow: "hidden",
-          position: "relative",
+          marginTop: "20px",
         }}
       ></div>
 
@@ -148,38 +155,27 @@ const HostComponent = () => {
         <Button onClick={toggleMic}>
           {micOn ? <MicIcon /> : <MicOffIcon />}
         </Button>
+
         <Button onClick={toggleCamera}>
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
 
         <ScreenSharingButtonComponent />
 
-        <Button onClick={toggleHand}>
-          <HandIcon />
-        </Button>
         <Button onClick={toggleRecording}>
-          <RecordVoiceOverIcon />
+          <RecordVoiceOverIcon color={recording ? "error" : "inherit"} />
         </Button>
+
+        <Button onClick={toggleHandRaised}>
+          <HandIcon color={handRaised ? "primary" : "inherit"} />
+        </Button>
+
         <Button onClick={leaveChannel}>
           <ExitToAppIcon />
         </Button>
       </div>
 
-      <div>
-        {remoteUsers.map((user) => (
-          <div
-            key={user.uid}
-            id={`remote-player-${user.uid}`}
-            style={{
-              width: "100%",
-              height: "200px",
-              marginTop: "10px",
-              overflow: "hidden",
-              position: "relative",
-            }}
-          />
-        ))}
-      </div>
+      <div id="remote-players"></div>
     </div>
   );
 };
