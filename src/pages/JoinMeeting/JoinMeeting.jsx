@@ -8,6 +8,7 @@ import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import ScreenShareButtonComponent from "./components/ScreenSharingButtonComponent";
 import { useSearchParams } from "react-router-dom";
+import axios from "axios";
 
 const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
@@ -18,6 +19,7 @@ const JoinMeeting = () => {
   const [cameraOn, setCameraOn] = useState(true);
   const [username, setUsername] = useState("");
   const [joined, setJoined] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   const [searchParams] = useSearchParams();
   const channelName = searchParams.get("channelName");
@@ -60,6 +62,9 @@ const JoinMeeting = () => {
       client.on("user-unpublished", handleUserUnpublished);
 
       setJoined(true); // Mark as joined
+
+      // Fetch initial users in the channel
+      fetchTotalUsers();
     } catch (error) {
       console.error("Failed to join or publish tracks:", error);
     }
@@ -74,11 +79,29 @@ const JoinMeeting = () => {
       remotePlayerContainer.style.width = "100%";
       remotePlayerContainer.style.height = "200px";
       remotePlayerContainer.style.backgroundColor = "#000";
-      remotePlayerContainer.innerText = user.uid; // Displaying user ID
+      remotePlayerContainer.style.position = "relative";
+      remotePlayerContainer.innerText = ""; // Clear any previous text
       document.getElementById("remote-players").append(remotePlayerContainer);
+
+      // Display the username or UID
+      const usernameOverlay = document.createElement("div");
+      usernameOverlay.style.position = "absolute";
+      usernameOverlay.style.bottom = "10px";
+      usernameOverlay.style.left = "10px";
+      usernameOverlay.style.color = "#fff";
+      usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+      usernameOverlay.style.padding = "5px 10px";
+      usernameOverlay.style.borderRadius = "5px";
+      usernameOverlay.style.zIndex = "1";
+      usernameOverlay.innerText = user.uid || "Unknown User";
+
+      remotePlayerContainer.appendChild(usernameOverlay);
 
       remoteVideoTrack.play(remotePlayerContainer.id);
       setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
+
+      // Fetch total users again when a new user joins
+      fetchTotalUsers();
     }
 
     if (mediaType === "audio") {
@@ -97,6 +120,33 @@ const JoinMeeting = () => {
       const { [user.uid]: removedUser, ...remainingUsers } = prev;
       return remainingUsers;
     });
+
+    // Fetch total users again when a user leaves
+    fetchTotalUsers();
+  };
+
+  const fetchTotalUsers = async () => {
+    try {
+      const username = "03ae3eefce0a44b38db5d00f845a6c8d";
+      const password = "2ae1a105c72f4a3d816f75a6b2fda68c";
+
+      const token = btoa(`${username}:${password}`);
+
+      const response = await axios.get(
+        `https://api.agora.io/dev/v1/channel/user/69b5921596cd4632a94ead5fe6706777/${channelName}`,
+        {
+          headers: {
+            Authorization: `Basic ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setTotalUsers(response.data.data.total);
+      }
+    } catch (error) {
+      console.error("Failed to fetch total users:", error);
+    }
   };
 
   const toggleMic = () => {
@@ -177,7 +227,6 @@ const JoinMeeting = () => {
             variant="h6"
             style={{
               position: "absolute",
-              marginTop: "300px",
               bottom: "10px",
               left: "10px",
               color: "#fff",
@@ -207,6 +256,8 @@ const JoinMeeting = () => {
           <ExitToAppIcon />
         </Button>
       </div>
+
+      <Typography variant="h6">Total Users: {totalUsers}</Typography>
 
       <div id="remote-players"></div>
     </div>
