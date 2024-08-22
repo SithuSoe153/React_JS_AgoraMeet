@@ -64,6 +64,16 @@ const JoinMeeting = () => {
 
       setJoined(true); // Mark as joined
 
+      // Handle existing users in the channel
+      client.remoteUsers.forEach((user) => {
+        if (user.hasVideo) {
+          handleUserPublished(user, "video");
+        }
+        if (user.hasAudio) {
+          handleUserPublished(user, "audio");
+        }
+      });
+
       // Fetch initial users in the channel
       fetchTotalUsers();
     } catch (error) {
@@ -272,20 +282,24 @@ const JoinMeeting = () => {
       <div
         id="remote-players"
         style={{
-          width: "100%",
-          height: "550px",
-          borderRadius: "20px",
-          overflow: "hidden",
-          marginTop: "20px",
+          marginTop: "30px",
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
           gap: "20px",
         }}
-      />
-
-      <div>
-        <Typography variant="h6">Total Joined Users: {totalUsers}</Typography>
+      >
+        {Object.keys(remoteUsers).map((uid) => (
+          <div
+            key={uid}
+            id={`remote-player-${uid}`}
+            style={{ width: "100%", height: "500px", backgroundColor: "#000" }}
+          />
+        ))}
       </div>
+
+      <Typography variant="body1" style={{ marginTop: "20px" }}>
+        Total Users: {totalUsers}
+      </Typography>
     </div>
   );
 };
