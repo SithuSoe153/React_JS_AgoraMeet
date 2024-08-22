@@ -83,41 +83,79 @@ const JoinMeeting = () => {
 
   const handleUserPublished = async (user, mediaType) => {
     try {
-      if (mediaType === "video" || mediaType === "screen") {
+      if (mediaType === "audio") {
+        if (user.audioTrack) {
+          user.audioTrack.play();
+        } else {
+          console.warn(
+            `Audio track for user ${user.uid} is not available. Retrying...`
+          );
+          setTimeout(() => {
+            if (user.audioTrack) {
+              user.audioTrack.play();
+            } else {
+              console.error(
+                `Failed to play audio track for user ${user.uid} after retrying.`
+              );
+            }
+          }, 1000); // Retry after 1 second
+        }
+      }
+
+      if (
+        (mediaType === "video" || mediaType === "screen") &&
+        user.videoTrack
+      ) {
         const remoteVideoTrack = user.videoTrack;
 
-        const remotePlayerContainer = document.createElement("div");
-        remotePlayerContainer.id = `remote-player-${user.uid}`;
-        remotePlayerContainer.style.width = "100%";
-        remotePlayerContainer.style.height = "500px";
-        remotePlayerContainer.style.backgroundColor = "#000";
-        remotePlayerContainer.style.position = "relative";
-        remotePlayerContainer.innerText = ""; // Clear any previous text
-        document.getElementById("remote-players").append(remotePlayerContainer);
+        // Create the remote player container if it doesn't exist
+        let remotePlayerContainer = document.getElementById(
+          `remote-player-${user.uid}`
+        );
+        if (!remotePlayerContainer) {
+          remotePlayerContainer = document.createElement("div");
+          remotePlayerContainer.id = `remote-player-${user.uid}`;
+          remotePlayerContainer.style.width = "100%";
+          remotePlayerContainer.style.height = "500px";
+          remotePlayerContainer.style.backgroundColor = "#000";
+          remotePlayerContainer.style.position = "relative";
+          remotePlayerContainer.innerText = ""; // Clear any previous text
+          document
+            .getElementById("remote-players")
+            .append(remotePlayerContainer);
 
-        // Display the username or UID
-        const usernameOverlay = document.createElement("div");
-        usernameOverlay.style.position = "absolute";
-        usernameOverlay.style.bottom = "10px";
-        usernameOverlay.style.left = "10px";
-        usernameOverlay.style.color = "#fff";
-        usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        usernameOverlay.style.padding = "5px 10px";
-        usernameOverlay.style.borderRadius = "5px";
-        usernameOverlay.style.zIndex = "1";
-        usernameOverlay.innerText = user.uid || "Unknown User";
+          // Display the username or UID
+          const usernameOverlay = document.createElement("div");
+          usernameOverlay.style.position = "absolute";
+          usernameOverlay.style.bottom = "10px";
+          usernameOverlay.style.left = "10px";
+          usernameOverlay.style.color = "#fff";
+          usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+          usernameOverlay.style.padding = "5px 10px";
+          usernameOverlay.style.borderRadius = "5px";
+          usernameOverlay.style.zIndex = "1";
+          usernameOverlay.innerText = user.uid || "Unknown User";
 
-        remotePlayerContainer.appendChild(usernameOverlay);
+          remotePlayerContainer.appendChild(usernameOverlay);
+        }
 
-        remoteVideoTrack.play(remotePlayerContainer.id);
+        // Play the video track if available
+        if (remoteVideoTrack) {
+          remoteVideoTrack.play(remotePlayerContainer.id);
+        } else {
+          console.error("Video track is not available");
+        }
+
         setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
 
         // Fetch total users again when a new user joins
         fetchTotalUsers();
       }
 
-      if (mediaType === "audio") {
+      if (mediaType === "audio" && user.audioTrack) {
         user.audioTrack.play();
+      } else if (mediaType === "audio") {
+        console.error("Audio track is not available");
       }
     } catch (error) {
       console.error("Error handling user-published:", error);
