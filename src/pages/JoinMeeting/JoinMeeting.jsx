@@ -55,6 +55,7 @@ const JoinMeeting = () => {
       await client.publish([microphoneTrack, cameraTrack]);
 
       client.on("user-published", async (user, mediaType) => {
+        console.log(`User published: ${user.uid}, mediaType: ${mediaType}`);
         await client.subscribe(user, mediaType);
         handleUserPublished(user, mediaType);
       });
@@ -70,59 +71,67 @@ const JoinMeeting = () => {
     }
   };
 
-  const handleUserPublished = (user, mediaType) => {
-    if (mediaType === "video" || mediaType === "screen") {
-      const remoteVideoTrack = user.videoTrack;
+  const handleUserPublished = async (user, mediaType) => {
+    try {
+      if (mediaType === "video" || mediaType === "screen") {
+        const remoteVideoTrack = user.videoTrack;
 
-      const remotePlayerContainer = document.createElement("div");
-      remotePlayerContainer.id = `remote-player-${user.uid}`;
-      remotePlayerContainer.style.width = "100%";
-      remotePlayerContainer.style.height = "200px";
-      remotePlayerContainer.style.backgroundColor = "#000";
-      remotePlayerContainer.style.position = "relative";
-      remotePlayerContainer.innerText = ""; // Clear any previous text
-      document.getElementById("remote-players").append(remotePlayerContainer);
+        const remotePlayerContainer = document.createElement("div");
+        remotePlayerContainer.id = `remote-player-${user.uid}`;
+        remotePlayerContainer.style.width = "100%";
+        remotePlayerContainer.style.height = "500px";
+        remotePlayerContainer.style.backgroundColor = "#000";
+        remotePlayerContainer.style.position = "relative";
+        remotePlayerContainer.innerText = ""; // Clear any previous text
+        document.getElementById("remote-players").append(remotePlayerContainer);
 
-      // Display the username or UID
-      const usernameOverlay = document.createElement("div");
-      usernameOverlay.style.position = "absolute";
-      usernameOverlay.style.bottom = "10px";
-      usernameOverlay.style.left = "10px";
-      usernameOverlay.style.color = "#fff";
-      usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-      usernameOverlay.style.padding = "5px 10px";
-      usernameOverlay.style.borderRadius = "5px";
-      usernameOverlay.style.zIndex = "1";
-      usernameOverlay.innerText = user.uid || "Unknown User";
+        // Display the username or UID
+        const usernameOverlay = document.createElement("div");
+        usernameOverlay.style.position = "absolute";
+        usernameOverlay.style.bottom = "10px";
+        usernameOverlay.style.left = "10px";
+        usernameOverlay.style.color = "#fff";
+        usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        usernameOverlay.style.padding = "5px 10px";
+        usernameOverlay.style.borderRadius = "5px";
+        usernameOverlay.style.zIndex = "1";
+        usernameOverlay.innerText = user.uid || "Unknown User";
 
-      remotePlayerContainer.appendChild(usernameOverlay);
+        remotePlayerContainer.appendChild(usernameOverlay);
 
-      remoteVideoTrack.play(remotePlayerContainer.id);
-      setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
+        remoteVideoTrack.play(remotePlayerContainer.id);
+        setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
 
-      // Fetch total users again when a new user joins
-      fetchTotalUsers();
-    }
+        // Fetch total users again when a new user joins
+        fetchTotalUsers();
+      }
 
-    if (mediaType === "audio") {
-      user.audioTrack.play();
+      if (mediaType === "audio") {
+        user.audioTrack.play();
+      }
+    } catch (error) {
+      console.error("Error handling user-published:", error);
     }
   };
 
   const handleUserUnpublished = (user) => {
-    const remoteContainer = document.getElementById(
-      `remote-player-${user.uid}`
-    );
-    if (remoteContainer) {
-      remoteContainer.remove();
-    }
-    setRemoteUsers((prev) => {
-      const { [user.uid]: removedUser, ...remainingUsers } = prev;
-      return remainingUsers;
-    });
+    try {
+      const remoteContainer = document.getElementById(
+        `remote-player-${user.uid}`
+      );
+      if (remoteContainer) {
+        remoteContainer.remove();
+      }
+      setRemoteUsers((prev) => {
+        const { [user.uid]: removedUser, ...remainingUsers } = prev;
+        return remainingUsers;
+      });
 
-    // Fetch total users again when a user leaves
-    fetchTotalUsers();
+      // Fetch total users again when a user leaves
+      fetchTotalUsers();
+    } catch (error) {
+      console.error("Error handling user-unpublished:", error);
+    }
   };
 
   const fetchTotalUsers = async () => {
@@ -250,16 +259,33 @@ const JoinMeeting = () => {
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
 
-        <ScreenShareButtonComponent />
+        <ScreenShareButtonComponent
+          localTracks={localTracks}
+          setLocalTracks={setLocalTracks}
+        />
 
-        <Button onClick={leaveChannel} disabled={!joined}>
+        <Button onClick={leaveChannel}>
           <ExitToAppIcon />
         </Button>
       </div>
 
-      <Typography variant="h6">Total Users: {totalUsers}</Typography>
+      <div
+        id="remote-players"
+        style={{
+          width: "100%",
+          height: "550px",
+          borderRadius: "20px",
+          overflow: "hidden",
+          marginTop: "20px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "20px",
+        }}
+      />
 
-      <div id="remote-players"></div>
+      <div>
+        <Typography variant="h6">Total Joined Users: {totalUsers}</Typography>
+      </div>
     </div>
   );
 };

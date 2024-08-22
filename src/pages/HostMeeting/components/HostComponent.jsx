@@ -47,62 +47,68 @@ const HostComponent = () => {
           client.on("user-published", async (user, mediaType) => {
             try {
               console.log("User Published:", user.uid);
-              await client.subscribe(user, mediaType);
-              console.log("User Subscribed:", user.uid);
+              if (mediaType === "video" || mediaType === "audio") {
+                await client.subscribe(user, mediaType);
+                console.log("User Subscribed:", user.uid);
 
-              if (mediaType === "video" || mediaType === "screen") {
-                const remoteVideoTrack = user.videoTrack;
+                if (mediaType === "video") {
+                  const remoteVideoTrack = user.videoTrack;
 
-                // Check if a container already exists for this user
-                let remotePlayerContainer = document.getElementById(
-                  `remote-player-${user.uid}`
-                );
-                if (!remotePlayerContainer) {
-                  remotePlayerContainer = document.createElement("div");
-                  remotePlayerContainer.id = `remote-player-${user.uid}`;
-                  remotePlayerContainer.style.width = "100%";
-                  remotePlayerContainer.style.height = "200px";
-                  remotePlayerContainer.style.backgroundColor = "#000";
-                  remotePlayerContainer.style.position = "relative";
-                  remotePlayerContainer.innerText = ""; // Clear any previous text
+                  // Check if a container already exists for this user
+                  let remotePlayerContainer = document.getElementById(
+                    `remote-player-${user.uid}`
+                  );
+                  if (!remotePlayerContainer) {
+                    remotePlayerContainer = document.createElement("div");
+                    remotePlayerContainer.id = `remote-player-${user.uid}`;
+                    remotePlayerContainer.style.width = "100%";
+                    remotePlayerContainer.style.height = "200px";
+                    remotePlayerContainer.style.backgroundColor = "#000";
+                    remotePlayerContainer.style.position = "relative";
+                    remotePlayerContainer.innerText = ""; // Clear any previous text
 
-                  const usernameOverlay = document.createElement("div");
-                  usernameOverlay.style.position = "absolute";
-                  usernameOverlay.style.bottom = "10px";
-                  usernameOverlay.style.left = "10px";
-                  usernameOverlay.style.color = "#fff";
-                  usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-                  usernameOverlay.style.padding = "5px 10px";
-                  usernameOverlay.style.borderRadius = "5px";
-                  usernameOverlay.innerText = user.name || user.uid;
+                    const usernameOverlay = document.createElement("div");
+                    usernameOverlay.style.position = "absolute";
+                    usernameOverlay.style.bottom = "10px";
+                    usernameOverlay.style.left = "10px";
+                    usernameOverlay.style.color = "#fff";
+                    usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+                    usernameOverlay.style.padding = "5px 10px";
+                    usernameOverlay.style.borderRadius = "5px";
+                    usernameOverlay.innerText = user.name || user.uid;
 
-                  remotePlayerContainer.appendChild(usernameOverlay);
-                  document
-                    .getElementById("remote-players")
-                    .append(remotePlayerContainer);
+                    remotePlayerContainer.appendChild(usernameOverlay);
+                    document
+                      .getElementById("remote-players")
+                      .append(remotePlayerContainer);
 
-                  // Play the video track in the created container
-                  remoteVideoTrack.play(remotePlayerContainer.id);
-                  setRemoteUsers((prev) => [...prev, user]);
+                    // Play the video track in the created container
+                    remoteVideoTrack.play(remotePlayerContainer.id);
+                    setRemoteUsers((prev) => [...prev, user]);
+                  }
                 }
-              }
 
-              if (mediaType === "audio") {
-                user.audioTrack.play();
+                if (mediaType === "audio") {
+                  user.audioTrack.play();
+                }
               }
             } catch (error) {
               console.error("Error handling user-published event:", error);
             }
           });
 
-          client.on("user-unpublished", (user) => {
-            const remoteContainer = document.getElementById(
-              `remote-player-${user.uid}`
-            );
-            if (remoteContainer) {
-              remoteContainer.remove();
+          client.on("user-unpublished", (user, mediaType) => {
+            if (mediaType === "video" || mediaType === "audio") {
+              const remoteContainer = document.getElementById(
+                `remote-player-${user.uid}`
+              );
+              if (remoteContainer) {
+                remoteContainer.remove();
+              }
+              setRemoteUsers((prev) =>
+                prev.filter((u) => u.uid !== user.uid)
+              );
             }
-            setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
           });
         }
       } catch (error) {

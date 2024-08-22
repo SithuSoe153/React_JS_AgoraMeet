@@ -86,6 +86,7 @@ const MeetingDrawer = () => {
   };
 
   const meetingLink = `http://localhost:5173/join?channelName=${encodeURIComponent(
+  // const meetingLink = `https://3745-2400-ac40-620-48d5-4c66-7f13-bf-82d5.ngrok-free.app /join?channelName=${encodeURIComponent(
     channelName
   )}&token=${encodeURIComponent(token)}`;
 
