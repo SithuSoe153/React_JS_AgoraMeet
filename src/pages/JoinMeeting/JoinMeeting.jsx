@@ -55,14 +55,13 @@ const JoinMeeting = () => {
       await client.publish([microphoneTrack, cameraTrack]);
 
       client.on("user-published", async (user, mediaType) => {
-        console.log(`User published: ${user.uid}, mediaType: ${mediaType}`);
         await client.subscribe(user, mediaType);
         handleUserPublished(user, mediaType);
       });
 
       client.on("user-unpublished", handleUserUnpublished);
 
-      setJoined(true); // Mark as joined
+      setJoined(true);
 
       // Handle existing users in the channel
       client.remoteUsers.forEach((user) => {
@@ -74,7 +73,6 @@ const JoinMeeting = () => {
         }
       });
 
-      // Fetch initial users in the channel
       fetchTotalUsers();
     } catch (error) {
       console.error("Failed to join or publish tracks:", error);
@@ -83,48 +81,28 @@ const JoinMeeting = () => {
 
   const handleUserPublished = async (user, mediaType) => {
     try {
-      if (mediaType === "audio") {
-        if (user.audioTrack) {
-          user.audioTrack.play();
-        } else {
-          console.warn(
-            `Audio track for user ${user.uid} is not available. Retrying...`
-          );
-          setTimeout(() => {
-            if (user.audioTrack) {
-              user.audioTrack.play();
-            } else {
-              console.error(
-                `Failed to play audio track for user ${user.uid} after retrying.`
-              );
-            }
-          }, 1000); // Retry after 1 second
-        }
+      if (mediaType === "audio" && user.audioTrack) {
+        user.audioTrack.play();
       }
 
       if (
         (mediaType === "video" || mediaType === "screen") &&
         user.videoTrack
       ) {
-        const remoteVideoTrack = user.videoTrack;
-
-        // Create the remote player container if it doesn't exist
-        let remotePlayerContainer = document.getElementById(
+        const remotePlayerContainer = document.getElementById(
           `remote-player-${user.uid}`
         );
         if (!remotePlayerContainer) {
-          remotePlayerContainer = document.createElement("div");
-          remotePlayerContainer.id = `remote-player-${user.uid}`;
-          remotePlayerContainer.style.width = "100%";
-          remotePlayerContainer.style.height = "500px";
-          remotePlayerContainer.style.backgroundColor = "#000";
-          remotePlayerContainer.style.position = "relative";
-          remotePlayerContainer.innerText = ""; // Clear any previous text
+          const newRemotePlayerContainer = document.createElement("div");
+          newRemotePlayerContainer.id = `remote-player-${user.uid}`;
+          newRemotePlayerContainer.style.width = "100%";
+          newRemotePlayerContainer.style.height = "500px";
+          newRemotePlayerContainer.style.backgroundColor = "#000";
+          newRemotePlayerContainer.style.position = "relative";
           document
             .getElementById("remote-players")
-            .append(remotePlayerContainer);
+            .append(newRemotePlayerContainer);
 
-          // Display the username or UID
           const usernameOverlay = document.createElement("div");
           usernameOverlay.style.position = "absolute";
           usernameOverlay.style.bottom = "10px";
@@ -135,27 +113,13 @@ const JoinMeeting = () => {
           usernameOverlay.style.borderRadius = "5px";
           usernameOverlay.style.zIndex = "1";
           usernameOverlay.innerText = user.uid || "Unknown User";
+          newRemotePlayerContainer.appendChild(usernameOverlay);
 
-          remotePlayerContainer.appendChild(usernameOverlay);
-        }
-
-        // Play the video track if available
-        if (remoteVideoTrack) {
-          remoteVideoTrack.play(remotePlayerContainer.id);
-        } else {
-          console.error("Video track is not available");
+          user.videoTrack.play(newRemotePlayerContainer.id);
         }
 
         setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
-
-        // Fetch total users again when a new user joins
         fetchTotalUsers();
-      }
-
-      if (mediaType === "audio" && user.audioTrack) {
-        user.audioTrack.play();
-      } else if (mediaType === "audio") {
-        console.error("Audio track is not available");
       }
     } catch (error) {
       console.error("Error handling user-published:", error);
@@ -164,19 +128,12 @@ const JoinMeeting = () => {
 
   const handleUserUnpublished = (user) => {
     try {
-      const remoteContainer = document.getElementById(
-        `remote-player-${user.uid}`
-      );
-      if (remoteContainer) {
-        remoteContainer.remove();
-      }
       setRemoteUsers((prev) => {
         const { [user.uid]: removedUser, ...remainingUsers } = prev;
         return remainingUsers;
       });
 
-      // Fetch total users again when a user leaves
-      fetchTotalUsers();
+      fetchTotalUsers(); // Adjust or remove depending on how you handle user count
     } catch (error) {
       console.error("Error handling user-unpublished:", error);
     }
@@ -186,7 +143,6 @@ const JoinMeeting = () => {
     try {
       const username = "03ae3eefce0a44b38db5d00f845a6c8d";
       const password = "2ae1a105c72f4a3d816f75a6b2fda68c";
-
       const token = btoa(`${username}:${password}`);
 
       const response = await axios.get(
@@ -232,15 +188,18 @@ const JoinMeeting = () => {
 
   const leaveChannel = async () => {
     try {
-      localTracks.forEach((track) => {
-        track.stop();
-        track.close();
-      });
+      if (localTracks.length > 0) {
+        localTracks.forEach((track) => {
+          track.stop();
+          track.close();
+        });
+      }
+
       await client.leave();
       setLocalTracks([]);
       setRemoteUsers({});
-      client.removeAllListeners(); // Remove all event listeners
-      setJoined(false); // Mark as not joined
+      client.removeAllListeners(); // Ensure no lingering listeners
+      setJoined(false);
     } catch (error) {
       console.error("Failed to leave the channel:", error);
     }
@@ -302,16 +261,13 @@ const JoinMeeting = () => {
         <Button onClick={toggleMic}>
           {micOn ? <MicIcon /> : <MicOffIcon />}
         </Button>
-
         <Button onClick={toggleCamera}>
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
-
         <ScreenShareButtonComponent
           localTracks={localTracks}
           setLocalTracks={setLocalTracks}
         />
-
         <Button onClick={leaveChannel}>
           <ExitToAppIcon />
         </Button>
@@ -323,21 +279,37 @@ const JoinMeeting = () => {
           marginTop: "30px",
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "20px",
+          gap: "10px",
         }}
       >
-        {Object.keys(remoteUsers).map((uid) => (
+        {Object.values(remoteUsers).map((user) => (
           <div
-            key={uid}
-            id={`remote-player-${uid}`}
-            style={{ width: "100%", height: "500px", backgroundColor: "#000" }}
-          />
+            key={user.uid}
+            id={`remote-player-${user.uid}`}
+            style={{
+              width: "100%",
+              height: "500px",
+              backgroundColor: "#000",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                bottom: "10px",
+                left: "10px",
+                color: "#fff",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                padding: "5px 10px",
+                borderRadius: "5px",
+                zIndex: "1",
+              }}
+            >
+              {user.uid || "Unknown User"}
+            </div>
+          </div>
         ))}
       </div>
-
-      <Typography variant="body1" style={{ marginTop: "20px" }}>
-        Total Users: {totalUsers}
-      </Typography>
     </div>
   );
 };
