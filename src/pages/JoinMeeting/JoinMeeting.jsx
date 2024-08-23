@@ -33,6 +33,10 @@ const JoinMeeting = () => {
     };
   }, [joined]);
 
+  useEffect(() => {
+    console.log("Remote Users Updated:", remoteUsers);
+  }, [remoteUsers]);
+
   const init = async () => {
     try {
       if (joined) {
@@ -78,9 +82,10 @@ const JoinMeeting = () => {
       console.error("Failed to join or publish tracks:", error);
     }
   };
-
   const handleUserPublished = async (user, mediaType) => {
     try {
+      await client.subscribe(user, mediaType);
+
       if (mediaType === "audio" && user.audioTrack) {
         user.audioTrack.play();
       }
@@ -106,7 +111,7 @@ const JoinMeeting = () => {
           const usernameOverlay = document.createElement("div");
           usernameOverlay.style.position = "absolute";
           usernameOverlay.style.bottom = "10px";
-          usernameOverlay.style.left = "10px";
+          usernameOverlay.style.right = "10px";
           usernameOverlay.style.color = "#fff";
           usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
           usernameOverlay.style.padding = "5px 10px";
@@ -115,7 +120,10 @@ const JoinMeeting = () => {
           usernameOverlay.innerText = user.uid || "Unknown User";
           newRemotePlayerContainer.appendChild(usernameOverlay);
 
-          user.videoTrack.play(newRemotePlayerContainer.id);
+          // Ensure video is playing after container is appended
+          setTimeout(() => {
+            user.videoTrack.play(newRemotePlayerContainer.id);
+          }, 0);
         }
 
         setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
@@ -123,6 +131,36 @@ const JoinMeeting = () => {
       }
     } catch (error) {
       console.error("Error handling user-published:", error);
+    }
+  };
+
+  const fetchTotalUsers = async () => {
+    try {
+      const username = "03ae3eefce0a44b38db5d00f845a6c8d";
+      const password = "2ae1a105c72f4a3d816f75a6b2fda68c";
+
+      const token = btoa(`${username}:${password}`);
+
+      const response = await axios.get(
+        `https://api.agora.io/dev/v1/channel/user/69b5921596cd4632a94ead5fe6706777/${channelName}`,
+        {
+          headers: {
+            Authorization: `Basic ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        // Batch the update to ensure UI consistency
+        setTotalUsers((prev) => {
+          if (response.data.data.total !== prev) {
+            return response.data.data.total;
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch total users:", error);
     }
   };
 
@@ -136,29 +174,6 @@ const JoinMeeting = () => {
       fetchTotalUsers(); // Adjust or remove depending on how you handle user count
     } catch (error) {
       console.error("Error handling user-unpublished:", error);
-    }
-  };
-
-  const fetchTotalUsers = async () => {
-    try {
-      const username = "03ae3eefce0a44b38db5d00f845a6c8d";
-      const password = "2ae1a105c72f4a3d816f75a6b2fda68c";
-      const token = btoa(`${username}:${password}`);
-
-      const response = await axios.get(
-        `https://api.agora.io/dev/v1/channel/user/69b5921596cd4632a94ead5fe6706777/${channelName}`,
-        {
-          headers: {
-            Authorization: `Basic ${token}`,
-          },
-        }
-      );
-
-      if (response.data.success) {
-        setTotalUsers(response.data.data.total);
-      }
-    } catch (error) {
-      console.error("Failed to fetch total users:", error);
     }
   };
 
@@ -310,6 +325,10 @@ const JoinMeeting = () => {
           </div>
         ))}
       </div>
+
+      <Typography variant="body1" style={{ marginTop: "20px" }}>
+        Total Users: {totalUsers}
+      </Typography>
     </div>
   );
 };
