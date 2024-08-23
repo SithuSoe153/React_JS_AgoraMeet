@@ -82,53 +82,44 @@ const JoinMeeting = () => {
       console.error("Failed to join or publish tracks:", error);
     }
   };
+
   const handleUserPublished = async (user, mediaType) => {
     try {
       await client.subscribe(user, mediaType);
 
-      if (mediaType === "audio" && user.audioTrack) {
+      const userContainerId = `remote-player-${user.uid}`;
+      let remotePlayerContainer = document.getElementById(userContainerId);
+
+      if (!remotePlayerContainer) {
+        remotePlayerContainer = document.createElement("div");
+        remotePlayerContainer.id = userContainerId;
+        remotePlayerContainer.style.width = "100%";
+        remotePlayerContainer.style.height = "500px";
+        remotePlayerContainer.style.backgroundColor = "#000";
+        remotePlayerContainer.style.position = "relative";
+        document.getElementById("remote-players").append(remotePlayerContainer);
+
+        const usernameOverlay = document.createElement("div");
+        usernameOverlay.style.position = "absolute";
+        usernameOverlay.style.bottom = "10px";
+        usernameOverlay.style.right = "10px";
+        usernameOverlay.style.color = "#fff";
+        usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        usernameOverlay.style.padding = "5px 10px";
+        usernameOverlay.style.borderRadius = "5px";
+        usernameOverlay.style.zIndex = "1";
+        usernameOverlay.innerText = user.uid || "Unknown User";
+        remotePlayerContainer.appendChild(usernameOverlay);
+      }
+
+      if (mediaType === "video" || mediaType === "screen") {
+        user.videoTrack.play(remotePlayerContainer.id);
+      } else if (mediaType === "audio") {
         user.audioTrack.play();
       }
 
-      if (
-        (mediaType === "video" || mediaType === "screen") &&
-        user.videoTrack
-      ) {
-        const remotePlayerContainer = document.getElementById(
-          `remote-player-${user.uid}`
-        );
-        if (!remotePlayerContainer) {
-          const newRemotePlayerContainer = document.createElement("div");
-          newRemotePlayerContainer.id = `remote-player-${user.uid}`;
-          newRemotePlayerContainer.style.width = "100%";
-          newRemotePlayerContainer.style.height = "500px";
-          newRemotePlayerContainer.style.backgroundColor = "#000";
-          newRemotePlayerContainer.style.position = "relative";
-          document
-            .getElementById("remote-players")
-            .append(newRemotePlayerContainer);
-
-          const usernameOverlay = document.createElement("div");
-          usernameOverlay.style.position = "absolute";
-          usernameOverlay.style.bottom = "10px";
-          usernameOverlay.style.right = "10px";
-          usernameOverlay.style.color = "#fff";
-          usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-          usernameOverlay.style.padding = "5px 10px";
-          usernameOverlay.style.borderRadius = "5px";
-          usernameOverlay.style.zIndex = "1";
-          usernameOverlay.innerText = user.uid || "Unknown User";
-          newRemotePlayerContainer.appendChild(usernameOverlay);
-
-          // Ensure video is playing after container is appended
-          setTimeout(() => {
-            user.videoTrack.play(newRemotePlayerContainer.id);
-          }, 0);
-        }
-
-        setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
-        fetchTotalUsers();
-      }
+      setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
+      fetchTotalUsers();
     } catch (error) {
       console.error("Error handling user-published:", error);
     }

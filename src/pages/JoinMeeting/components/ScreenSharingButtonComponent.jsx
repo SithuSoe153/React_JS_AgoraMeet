@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import { Button } from "@mui/material";
-import { useLocation } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 
 const ScreenSharingButtonComponent = () => {
-  // const { state } = useLocation();
-  // const { channelName, token } = state || {};
-
   const [searchParams] = useSearchParams();
-
   const channelName = searchParams.get("channelName");
   const token = searchParams.get("token");
 
@@ -22,8 +17,15 @@ const ScreenSharingButtonComponent = () => {
 
   useEffect(() => {
     const initClient = async () => {
-      const agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-      setClient(agoraClient);
+      try {
+        const agoraClient = AgoraRTC.createClient({
+          mode: "rtc",
+          codec: "vp8",
+        });
+        setClient(agoraClient);
+      } catch (error) {
+        console.error("Failed to initialize Agora client", error);
+      }
     };
     initClient();
 
@@ -33,6 +35,11 @@ const ScreenSharingButtonComponent = () => {
   }, []);
 
   const startScreenSharing = async () => {
+    if (!client) {
+      console.error("Agora client is not initialized");
+      return;
+    }
+
     try {
       // Join the channel
       await client.join(token, channelName, null, null);
@@ -48,7 +55,11 @@ const ScreenSharingButtonComponent = () => {
       // Publish the screen video track
       await client.publish(screenTrack);
 
-      screenTrack.play("local-screen-player");
+      // Play on local screen (optional for the sharer to see their own screen)
+      const localScreenPlayer = document.getElementById("local-screen-player");
+      if (localScreenPlayer) {
+        screenTrack.play("local-screen-player");
+      }
 
       screenTrack.on("track-ended", () => {
         console.log("Screen sharing stopped");
@@ -82,6 +93,11 @@ const ScreenSharingButtonComponent = () => {
 
   return (
     <>
+      <div
+        id="local-screen-player"
+        style={{ width: "100%", height: "500px" }}
+      ></div>
+
       <Button onClick={toggleScreenShare}>
         {isSharing ? <StopScreenShareIcon /> : <ScreenShareIcon />}
       </Button>
