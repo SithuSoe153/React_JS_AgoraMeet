@@ -6,7 +6,7 @@ import MicOffIcon from "@mui/icons-material/MicOff";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import ScreenShareButtonComponent from "./components/ScreenSharingButtonComponent";
+import ScreenSharingButtonComponent from "./components/ScreenSharingButtonComponent";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 
@@ -87,38 +87,24 @@ const JoinMeeting = () => {
     try {
       await client.subscribe(user, mediaType);
 
-      const userContainerId = `remote-player-${user.uid}`;
-      let remotePlayerContainer = document.getElementById(userContainerId);
-
-      if (!remotePlayerContainer) {
-        remotePlayerContainer = document.createElement("div");
-        remotePlayerContainer.id = userContainerId;
-        remotePlayerContainer.style.width = "100%";
-        remotePlayerContainer.style.height = "500px";
-        remotePlayerContainer.style.backgroundColor = "#000";
-        remotePlayerContainer.style.position = "relative";
-        document.getElementById("remote-players").append(remotePlayerContainer);
-
-        const usernameOverlay = document.createElement("div");
-        usernameOverlay.style.position = "absolute";
-        usernameOverlay.style.bottom = "10px";
-        usernameOverlay.style.right = "10px";
-        usernameOverlay.style.color = "#fff";
-        usernameOverlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        usernameOverlay.style.padding = "5px 10px";
-        usernameOverlay.style.borderRadius = "5px";
-        usernameOverlay.style.zIndex = "1";
-        usernameOverlay.innerText = user.uid || "Unknown User";
-        remotePlayerContainer.appendChild(usernameOverlay);
-      }
-
-      if (mediaType === "video" || mediaType === "screen") {
-        user.videoTrack.play(remotePlayerContainer.id);
-      } else if (mediaType === "audio") {
-        user.audioTrack.play();
-      }
-
+      // Setting user in the state
       setRemoteUsers((prev) => ({ ...prev, [user.uid]: user }));
+
+      // Using a timeout to ensure the element is rendered before playing the track
+      setTimeout(() => {
+        const elementId = `remote-player-${user.uid}`;
+
+        if (mediaType === "video" || mediaType === "screen") {
+          if (document.getElementById(elementId)) {
+            user.videoTrack.play(elementId);
+          } else {
+            console.error(`Element with ID ${elementId} not found`);
+          }
+        } else if (mediaType === "audio") {
+          user.audioTrack.play();
+        }
+      }, 100); // Adjust this delay if necessary
+
       fetchTotalUsers();
     } catch (error) {
       console.error("Error handling user-published:", error);
@@ -142,7 +128,6 @@ const JoinMeeting = () => {
       );
 
       if (response.data.success) {
-        // Batch the update to ensure UI consistency
         setTotalUsers((prev) => {
           if (response.data.data.total !== prev) {
             return response.data.data.total;
@@ -162,7 +147,7 @@ const JoinMeeting = () => {
         return remainingUsers;
       });
 
-      fetchTotalUsers(); // Adjust or remove depending on how you handle user count
+      fetchTotalUsers();
     } catch (error) {
       console.error("Error handling user-unpublished:", error);
     }
@@ -210,6 +195,20 @@ const JoinMeeting = () => {
       console.error("Failed to leave the channel:", error);
     }
   };
+
+  useEffect(() => {
+    Object.values(remoteUsers).forEach((user) => {
+      const elementId = `remote-player-${user.uid}`;
+
+      if (document.getElementById(elementId)) {
+        if (user.videoTrack) {
+          user.videoTrack.play(elementId);
+        }
+      } else {
+        console.error(`Element with ID ${elementId} not found`);
+      }
+    });
+  }, [remoteUsers]);
 
   return (
     <div>
@@ -270,9 +269,9 @@ const JoinMeeting = () => {
         <Button onClick={toggleCamera}>
           {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
         </Button>
-        <ScreenShareButtonComponent
+        <ScreenSharingButtonComponent
+          client={client}
           localTracks={localTracks}
-          setLocalTracks={setLocalTracks}
         />
         <Button onClick={leaveChannel}>
           <ExitToAppIcon />
@@ -280,7 +279,6 @@ const JoinMeeting = () => {
       </div>
 
       <div
-        id="remote-players"
         style={{
           marginTop: "30px",
           display: "grid",
@@ -288,18 +286,21 @@ const JoinMeeting = () => {
           gap: "10px",
         }}
       >
-        {Object.values(remoteUsers).map((user) => (
+        {Object.keys(remoteUsers).map((uid) => (
           <div
-            key={user.uid}
-            id={`remote-player-${user.uid}`}
+            key={uid}
+            id={`remote-player-${uid}`}
             style={{
               width: "100%",
-              height: "500px",
-              backgroundColor: "#000",
+              height: "300px",
+              marginBottom: "10px",
+              borderRadius: "20px",
+              overflow: "hidden",
               position: "relative",
             }}
           >
-            <div
+            <Typography
+              variant="h6"
               style={{
                 position: "absolute",
                 bottom: "10px",
@@ -308,18 +309,14 @@ const JoinMeeting = () => {
                 backgroundColor: "rgba(0, 0, 0, 0.5)",
                 padding: "5px 10px",
                 borderRadius: "5px",
-                zIndex: "1",
+                zIndex: 1,
               }}
             >
-              {user.uid || "Unknown User"}
-            </div>
+              {remoteUsers[uid].username || uid}
+            </Typography>
           </div>
         ))}
       </div>
-
-      <Typography variant="body1" style={{ marginTop: "20px" }}>
-        Total Users: {totalUsers}
-      </Typography>
     </div>
   );
 };

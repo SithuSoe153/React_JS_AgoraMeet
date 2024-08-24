@@ -1,38 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import { Button } from "@mui/material";
-import { useSearchParams } from "react-router-dom";
-
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
 import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 
-const ScreenSharingButtonComponent = () => {
-  const [searchParams] = useSearchParams();
-  const channelName = searchParams.get("channelName");
-  const token = searchParams.get("token");
-
-  const [client, setClient] = useState(null);
+const ScreenSharingButtonComponent = ({ client, localTracks }) => {
   const [screenTrack, setScreenTrack] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
-
-  useEffect(() => {
-    const initClient = async () => {
-      try {
-        const agoraClient = AgoraRTC.createClient({
-          mode: "rtc",
-          codec: "vp8",
-        });
-        setClient(agoraClient);
-      } catch (error) {
-        console.error("Failed to initialize Agora client", error);
-      }
-    };
-    initClient();
-
-    return () => {
-      leaveChannel();
-    };
-  }, []);
 
   const startScreenSharing = async () => {
     if (!client) {
@@ -41,9 +15,6 @@ const ScreenSharingButtonComponent = () => {
     }
 
     try {
-      // Join the channel
-      await client.join(token, channelName, null, null);
-
       // Create screen video track
       const screenTrack = await AgoraRTC.createScreenVideoTrack({
         encoderConfig: "1080p_1",
@@ -51,6 +22,9 @@ const ScreenSharingButtonComponent = () => {
       });
 
       setScreenTrack(screenTrack);
+
+      // Unpublish local camera track (optional)
+      await client.unpublish(localTracks[1]); // Assuming localTracks[1] is the camera track
 
       // Publish the screen video track
       await client.publish(screenTrack);
@@ -61,9 +35,9 @@ const ScreenSharingButtonComponent = () => {
         screenTrack.play("local-screen-player");
       }
 
-      screenTrack.on("track-ended", () => {
+      screenTrack.on("track-ended", async () => {
         console.log("Screen sharing stopped");
-        leaveChannel();
+        await stopScreenSharing();
       });
 
       setIsSharing(true);
@@ -72,22 +46,27 @@ const ScreenSharingButtonComponent = () => {
     }
   };
 
-  const leaveChannel = async () => {
+  const stopScreenSharing = async () => {
     if (screenTrack) {
+      await client.unpublish(screenTrack);
       screenTrack.stop();
       screenTrack.close();
     }
-    if (client) {
-      await client.leave();
+
+    // Re-publish the local camera track (optional)
+    if (localTracks[1]) {
+      await client.publish(localTracks[1]);
+      localTracks[1].play("local-player");
     }
+
     setIsSharing(false);
   };
 
   const toggleScreenShare = async () => {
     if (isSharing) {
-      leaveChannel();
+      await stopScreenSharing();
     } else {
-      startScreenSharing();
+      await startScreenSharing();
     }
   };
 
