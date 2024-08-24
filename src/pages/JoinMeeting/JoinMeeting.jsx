@@ -189,7 +189,7 @@ const JoinMeeting = () => {
       await client.leave();
       setLocalTracks([]);
       setRemoteUsers({});
-      client.removeAllListeners(); // Ensure no lingering listeners
+      client.removeAllListeners();
       setJoined(false);
     } catch (error) {
       console.error("Failed to leave the channel:", error);
@@ -317,6 +317,9 @@ const JoinMeeting = () => {
           </div>
         ))}
       </div>
+      <Typography variant="body1" style={{ marginTop: "20px" }}>
+        Total Users: {totalUsers}
+      </Typography>
     </div>
   );
 };

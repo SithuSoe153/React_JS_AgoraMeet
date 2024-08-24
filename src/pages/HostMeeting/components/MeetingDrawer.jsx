@@ -85,8 +85,9 @@ const MeetingDrawer = () => {
     setStage({ ...stage, [anchor]: open });
   };
 
-  const meetingLink = `http://localhost:5173/join?channelName=${encodeURIComponent(
-  // const meetingLink = `https://80c9-172-104-188-189.ngrok-free.app/join?channelName=${encodeURIComponent(
+  // const meetingLink = `http://localhost:5173/join?channelName=${encodeURIComponent(
+  const meetingLink = `https://qq-meet.netlify.app/join?channelName=${encodeURIComponent(
+    // const meetingLink = `https://80c9-172-104-188-189.ngrok-free.app/join?channelName=${encodeURIComponent(
     channelName
   )}&token=${encodeURIComponent(token)}`;
 
