@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import { Button } from "@mui/material";
 import ScreenShareIcon from "@mui/icons-material/ScreenShare";
@@ -7,6 +7,15 @@ import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
 const ScreenSharingButtonComponent = ({ client, localTracks }) => {
   const [screenTrack, setScreenTrack] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
+
+  useEffect(() => {
+    if (isSharing && screenTrack) {
+      const localScreenPlayer = document.getElementById("local-screen-player");
+      if (localScreenPlayer) {
+        screenTrack.play("local-screen-player");
+      }
+    }
+  }, [isSharing, screenTrack]);
 
   const startScreenSharing = async () => {
     if (!client) {
@@ -28,12 +37,6 @@ const ScreenSharingButtonComponent = ({ client, localTracks }) => {
 
       // Publish the screen video track
       await client.publish(screenTrack);
-
-      // Play on local screen (optional for the sharer to see their own screen)
-      const localScreenPlayer = document.getElementById("local-screen-player");
-      if (localScreenPlayer) {
-        screenTrack.play("local-screen-player");
-      }
 
       screenTrack.on("track-ended", async () => {
         console.log("Screen sharing stopped");
@@ -59,6 +62,7 @@ const ScreenSharingButtonComponent = ({ client, localTracks }) => {
       localTracks[1].play("local-player");
     }
 
+    setScreenTrack(null);
     setIsSharing(false);
   };
 
@@ -72,10 +76,19 @@ const ScreenSharingButtonComponent = ({ client, localTracks }) => {
 
   return (
     <>
-      <div
-        id="local-screen-player"
-        style={{ width: "100%", height: "500px" }}
-      ></div>
+      {isSharing && (
+        <div
+          id="local-screen-player"
+          style={{
+            width: "100%",
+            height: "500px",
+            borderRadius: "10px",
+            overflow: "hidden",
+            backgroundColor: "#000",
+            marginTop: "20px",
+          }}
+        ></div>
+      )}
 
       <Button onClick={toggleScreenShare}>
         {isSharing ? <StopScreenShareIcon /> : <ScreenShareIcon />}
