@@ -1,8 +1,15 @@
-# React + Vite
+# Mumble2
+A real time messaging & video calling. Youtube tutorial will be upload in the comming days.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Live Demo: https://www.mumble2.dev/
 
-Currently, two official plugins are available:
+# Installation
+* 1 - clone repo https://github.com/divanov11/mumble2
+* 2 - Create an account on agora.io and create an app to generate an APP ID
+* 3 - Update APP ID, Temp Token and Channel Name in room_rtc.js
+```javascript
+let APP_ID = "YOU-APP-ID"
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+<img src="./images/preview.png">  
