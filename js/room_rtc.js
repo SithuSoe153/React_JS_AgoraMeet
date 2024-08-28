@@ -1,21 +1,54 @@
 const APP_ID = "69b5921596cd4632a94ead5fe6706777";
+const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 
-let uid = sessionStorage.getItem("uid");
-if (!uid) {
-  uid = String(Math.floor(Math.random() * 10000));
-  sessionStorage.setItem("uid", uid);
-}
+// let uid = sessionStorage.getItem("uid");
+// if (!uid) {
+//   uid = String(Math.floor(Math.random() * 10000));
+//   sessionStorage.setItem("uid", uid);
+// }
 
-let token =
-  "00669b5921596cd4632a94ead5fe6706777IADSwBx/ySde/hNMxNN0naqCeZEEnxmsPYsVDafUw48DSa0Tte8AAAAAIgAkVLyaMh3PZgQAAQCyJ/RrAgCyJ/RrAwCyJ/RrBACyJ/Rr";
-let client;
+let uid = sessionStorage.getItem("display_name");
 
-let rtmClient;
-let channel;
+let channelName = "1017soe";
+let token;
+let rtcToken;
+let rtmToken =
+  "00619547e2b1603452688a040cc0a219aeaIAAhhT/gl6Luhdwg+UvULYJUG0kbNxgGlEhv6WfUDJePi6TtS3YAAAAAEAAvA3IdDcXQZgEA6AONz/Vr";
 
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
 let roomId = urlParams.get("room");
+let meetingGuid = urlParams.get("room");
+
+async function fetchMeetingDetails() {
+  // const accessToken = sessionStorage.getItem("access_token");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/chat/room/list?chatRoomGuid=${meetingGuid}`,
+      {
+        method: "GET",
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok && data && data.data) {
+      rtcToken = data.data;
+      return rtcToken;
+    } else {
+      console.error("Failed to fetch meeting details:", data);
+      alert("Failed to fetch meeting details and information.");
+    }
+  } catch (error) {
+    console.error("Error fetching meeting details:", error);
+    alert("An error occurred while fetching meeting details and information.");
+  }
+}
+
+let client;
+
+let rtmClient;
 
 if (!roomId) {
   roomId = "main";
@@ -33,8 +66,30 @@ let localScreenTracks;
 let sharingScreen = false;
 
 let joinRoomInit = async () => {
+  //
+
+  rtmClient = await AgoraRTM.createInstance(APP_ID);
+  await rtmClient.login({ uid, rtmToken });
+
+  await rtmClient.addOrUpdateLocalUserAttributes({ name: displayName });
+
+  channel = await rtmClient.createChannel(roomId);
+  await channel.join();
+
+  channel.on("MemberJoined", handleMemberJoined);
+  channel.on("MemberLeft", handleMemberLeft);
+  channel.on("ChannelMessage", handleChannelMessage);
+
+  getMembers();
+  addBotMessageToDom(`Welcome to the room ${displayName}! 👋`);
+
+  //
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-  await client.join(APP_ID, roomId, token, uid);
+
+  const meetingDetails = await fetchMeetingDetails();
+  token = meetingDetails;
+
+  await client.join(APP_ID, channelName, token, uid);
 
   client.on("user-published", handleUserPublished);
   client.on("user-left", handleUserLeft);
