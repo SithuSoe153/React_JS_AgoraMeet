@@ -225,9 +225,9 @@
   width: 100%;
 }
 
-.video-player video{
+/* .video-player video{
   border-radius: 50%;
-}
+} */
 
 @media (max-width: 1400px) {
   .video__container{
