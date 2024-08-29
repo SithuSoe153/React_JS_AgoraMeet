@@ -3,19 +3,21 @@ const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
 let roomId = urlParams.get("room");
+console.log(roomId);
 
 const form = document.getElementById("lobby__form");
 const roomInput = document.getElementById("room-input");
 
 let displayName = sessionStorage.getItem("display_name");
 const rtcChannelName = sessionStorage.getItem("rtc_channel");
+// const rtcChannelName = "1017soe";
 
 if (displayName) {
   form.name.value = displayName;
 }
 
 // Check if the RTC channel name is available; otherwise, redirect to login
-if (!rtcChannelName) {
+if (!rtcChannelName && !roomId) {
   window.location.href = "login.html";
 } else {
   // Automatically set the room input value with the RTC channel name
@@ -31,6 +33,10 @@ if (!rtcChannelName) {
 // Function to fetch user brief data
 async function fetchUserBrief() {
   const accessToken = sessionStorage.getItem("access_token");
+  
+  if (!accessToken) {
+    return;
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/user/brief`, {
@@ -54,6 +60,8 @@ async function fetchUserBrief() {
     alert("An error occurred while fetching user information.");
   }
 }
+
+fetchUserBrief();
 
 // Function to create a new room
 async function createNewRoom() {
@@ -105,8 +113,6 @@ async function createNewRoom() {
   }
 }
 
-fetchUserBrief();
-
 async function initializeRoom() {
   roomInput.value = rtcChannelName || roomId;
 
@@ -125,6 +131,7 @@ form.addEventListener("submit", async (e) => {
   if (!roomId) {
     // Create a new room if roomId is not in the URL
     const roomData = await createNewRoom();
+    console.log("no room id");
 
     if (roomData && roomData.inviteCode) {
       roomId = roomData.newRoomId;
@@ -137,6 +144,7 @@ form.addEventListener("submit", async (e) => {
       return;
     }
   } else {
+    console.log("yes room id");
     // If roomId already exists, proceed with the existing code
     window.location = `room.html?room=${roomId}`;
   }
