@@ -8,6 +8,9 @@ const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 // }
 
 let uid = sessionStorage.getItem("display_name");
+let chat_user_name = sessionStorage.getItem("chat_user_name");
+console.log("chat_user_name", chat_user_name);
+
 
 let channelName;
 let rtcToken;
@@ -69,19 +72,93 @@ let remoteUsers = {};
 let localScreenTracks;
 let sharingScreen = false;
 
-let joinRoomInit = async () => {
-  client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+// let joinRoomInit = async () => {
+//   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
-  const meetingDetails = await fetchMeetingDetails();
-  const clientToken = meetingDetails.rtcToken;
-  const clientChannelName = meetingDetails.channelName;
+//   const meetingDetails = await fetchMeetingDetails();
+//   const clientToken = meetingDetails.rtcToken;
+//   const clientChannelName = meetingDetails.channelName;
 
-  // await client.join(APP_ID, clientChannelName, clientToken, uid);
-  await client.join(clientToken, clientChannelName, null, uid);
+//   // await client.join(APP_ID, clientChannelName, clientToken, uid);
+//   await client.join(clientToken, clientChannelName, null, uid);
 
-  client.on("user-published", handleUserPublished);
-  client.on("user-left", handleUserLeft);
-};
+//   client.on("user-published", handleUserPublished);
+//   client.on("user-left", handleUserLeft);
+// };
+
+// joinRoomInit function inside room_rtc.js or your main JavaScript file for handling room operations
+async function joinRoomInit() {
+  try {
+    // Make an API call to join the room
+    const response = await fetch(
+      `https://dev.gigagates.com/social-commerce-backend/v1/chat/room/user/token?channelName=${channelName}&groupId=${groupId}&chatUserName=${chatUserName}&status=true`,
+      {
+        method: "GET",
+      }
+    );
+
+    const data = await response.json();
+
+    // if (response.ok && data && data.data) {
+    //   console.log("User successfully joined:", data);
+
+    //   // Optionally update UI based on response
+    //   addMemberToDom(chatUserName); // assuming chatUserName is your MemberId
+    //   addBotMessageToDom(`Welcome to the room ${chatUserName}! 👋`);
+
+    //   // Additional actions like fetching details if necessary
+    //   await fetchMeetingDetails(); // Call if further details are required
+
+    //   // If needed, send a welcome message
+    //   sendWelcomeMessage(chatUserName);
+    // } else {
+    //   console.error("Failed to join the room:", data);
+    //   // alert("Failed to join the room.");
+    // }
+  } catch (error) {
+    console.error("Error during room join:", error);
+    // alert("An error occurred while joining the room.");
+  }
+}
+
+// Function to send a welcome message to the group
+async function sendWelcomeMessage(username) {
+  const messagePayload = {
+    from: username,
+    to: [groupId], // Assuming groupId is the target group
+    type: "txt",
+    need_group_ack: false,
+    body: {
+      msg: `Hello everyone, ${username} has joined!`,
+    },
+    ext: {
+      em_ignore_notification: true,
+    },
+    routetype: "ROUTE_ONLINE",
+    sessionGuid: "unique-session-guid", // Optional, replace with actual if needed
+  };
+
+  try {
+    const response = await fetch(
+      "https://dev.gigagates.com/social-commerce-backend/group/send",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messagePayload),
+      }
+    );
+
+    if (response.ok) {
+      console.log("Welcome message sent successfully.");
+    } else {
+      console.error("Failed to send welcome message.");
+    }
+  } catch (error) {
+    console.error("Error sending welcome message:", error);
+  }
+}
 
 let joinStream = async () => {
   document.getElementById("join-btn").style.display = "none";

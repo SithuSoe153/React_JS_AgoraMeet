@@ -33,7 +33,7 @@ if (!rtcChannelName && !roomId) {
 // Function to fetch user brief data
 async function fetchUserBrief() {
   const accessToken = sessionStorage.getItem("access_token");
-  
+
   if (!accessToken) {
     return;
   }
@@ -128,10 +128,15 @@ initializeRoom();
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+    const usernameInput = document.getElementById("username");
+    const enteredUsername = usernameInput.value.trim();
+
+    sessionStorage.setItem("chat_user_name", enteredUsername);
+    console.log(`Using manually entered username: ${enteredUsername}`);
+
   if (!roomId) {
     // Create a new room if roomId is not in the URL
     const roomData = await createNewRoom();
-    console.log("no room id");
 
     if (roomData && roomData.inviteCode) {
       roomId = roomData.newRoomId;
@@ -144,7 +149,6 @@ form.addEventListener("submit", async (e) => {
       return;
     }
   } else {
-    console.log("yes room id");
     // If roomId already exists, proceed with the existing code
     window.location = `room.html?room=${roomId}`;
   }
