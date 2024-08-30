@@ -5,12 +5,34 @@ let handleMemberJoined = async (MemberId) => {
   let members = await channel.getMembers();
   updateMemberTotal(members);
 
-  let { name } = await rtmClient.getUserAttributesByKeys(MemberId, ["name"]);
-  addBotMessageToDom(`Welcome to the room ${name}! 👋`);
+  try {
+    let userAttributes = await rtmClient.getUserAttributesByKeys(MemberId, [
+      "name",
+    ]);
+
+    let name = userAttributes.name || MemberId; // Fallback to MemberId if name is undefined
+
+    if (name === undefined) {
+      console.warn(`Name attribute is not defined for user: ${MemberId}`);
+    }
+
+    addBotMessageToDom(`Welcome to the room ${name}! 👋`);
+  } catch (error) {
+    console.error("Failed to fetch user attributes:", error);
+    addBotMessageToDom(`Welcome to the room ${MemberId}! 👋`); // Fallback to MemberId
+  }
 };
 
 let addMemberToDom = async (MemberId) => {
-  let { name } = await rtmClient.getUserAttributesByKeys(MemberId, ["name"]);
+  let userAttributes = await rtmClient.getUserAttributesByKeys(MemberId, [
+    "name",
+  ]);
+
+  let name = userAttributes.name || MemberId; // Fallback to MemberId if name is undefined
+
+  if (name === undefined) {
+    console.warn(`Name attribute is not defined for user: ${MemberId}`);
+  }
 
   let membersWrapper = document.getElementById("member__list");
   let memberItem = `<div class="member__wrapper" id="member__${MemberId}__wrapper">
@@ -49,21 +71,82 @@ let getMembers = async () => {
   }
 };
 
-// let handleChannelMessage = async (messageData, MemberId) => {
-//   console.log("A new message was received");
-//   let data = JSON.parse(messageData.text);
+const handleChannelMessage = async (message, MemberId) => {
+  console.log("Received a new message from:", MemberId);
+  let data;
 
-//   if (data.type === "chat") {
-//     addMessageToDom(data.displayName, data.message);
+  try {
+    // Parse the incoming message text as JSON
+    data = JSON.parse(message.text);
+    console.log("Parsed message data:", data);
+  } catch (error) {
+    // Handle JSON parsing errors
+    console.error("Failed to parse incoming message data:", error);
+    return; // Exit early if parsing fails
+  }
+
+  // Handle chat messages
+  if (data.type === "chat") {
+    console.log("Displaying chat message:", data);
+    addMessageToDom(
+      data.displayName || MemberId, // Use MemberId as fallback
+      data.body?.msg || data.message // Use data.message as fallback
+    );
+  }
+
+  // Handle user left event
+  if (data.type === "user_left") {
+    console.log("Handling user left:", data.uid);
+    let userContainer = document.getElementById(`user-container-${data.uid}`);
+    if (userContainer) {
+      userContainer.remove();
+    }
+
+    // Adjust display frame if the current user left
+    if (userIdInDisplayFrame === `user-container-${data.uid}`) {
+      displayFrame.style.display = null;
+      for (let i = 0; i < videoFrames.length; i++) {
+        videoFrames[i].style.height = "300px";
+        videoFrames[i].style.width = "300px";
+      }
+    }
+  }
+};
+
+// let handleChannelMessage = async (messageData, MemberId) => {
+//   console.log("A new message was received from:", MemberId);
+//   console.log("Message data:", messageData);
+
+//   let data;
+//   try {
+//     data = JSON.parse(messageData.text);
+//     console.log("Parsed message data:", data);
+//   } catch (error) {
+//     console.error("Failed to parse incoming message data:", error);
+//     return; // Exit early if parsing fails
 //   }
 
+//   // Display chat messages in real-time
+//   if (data.type === "chat") {
+//     console.log("Displaying chat message:", data);
+//     addMessageToDom(
+//       data.displayName || MemberId,
+//       data.body.msg || data.message
+//     ); // Adjust according to actual message format
+//   }
+
+//   // Handle user leaving the room
 //   if (data.type === "user_left") {
-//     document.getElementById(`user-container-${data.uid}`).remove();
+//     console.log("Handling user left:", data.uid);
+//     let userContainer = document.getElementById(`user-container-${data.uid}`);
+//     if (userContainer) {
+//       userContainer.remove();
+//     }
 
-//     if (userIdInDisplayFrame === `user-container-${uid}`) {
+//     // Reset display frame if the user leaving is currently displayed
+//     if (userIdInDisplayFrame === `user-container-${data.uid}`) {
 //       displayFrame.style.display = null;
-
-//       for (let i = 0; videoFrames.length > i; i++) {
+//       for (let i = 0; i < videoFrames.length; i++) {
 //         videoFrames[i].style.height = "300px";
 //         videoFrames[i].style.width = "300px";
 //       }
@@ -71,47 +154,177 @@ let getMembers = async () => {
 //   }
 // };
 
-// let sendMessage = async (e) => {
-//   e.preventDefault();
+const sendMessageToRTMChannel = async (message) => {
+  try {
+    const messagePayload = {
+      text: JSON.stringify({ type: "chat", body: { msg: message } }),
+    };
+    await channel.sendMessage(messagePayload);
+    console.log("Message sent to RTM channel successfully.");
+  } catch (error) {
+    console.error("Failed to send message to RTM channel:", error);
+  }
+};
 
-//   let message = e.target.message.value;
-//   channel.sendMessage({
-//     text: JSON.stringify({
-//       type: "chat",
-//       message: message,
-//       displayName: displayName,
-//     }),
-//   });
-//   addMessageToDom(displayName, message);
-//   e.target.reset();
-// };
+// sendMessageToRTMChannel("testmessages");
 
-// let addMessageToDom = (name, message) => {
-//   let messagesWrapper = document.getElementById("messages");
+// const handleChannelMessage = async (messageData, MemberId) => {
+//   console.log("A new message was received from:", MemberId);
+//   let data;
 
-//   let newMessage = `<div class="message__wrapper">
-//                         <div class="message__body">
-//                             <strong class="message__author">${name}</strong>
-//                             <p class="message__text">${message}</p>
-//                         </div>
-//                     </div>`;
+//   try {
+//     data = JSON.parse(messageData.text);
+//     console.log("Parsed message data:", data);
+//   } catch (error) {
+//     console.error("Failed to parse incoming message data:", error);
+//     return; // Exit early if parsing fails
+//   }
 
-//   messagesWrapper.insertAdjacentHTML("beforeend", newMessage);
-
-//   let lastMessage = document.querySelector(
-//     "#messages .message__wrapper:last-child"
-//   );
-//   if (lastMessage) {
-//     lastMessage.scrollIntoView();
+//   if (data.type === "chat") {
+//     addMessageToDom(
+//       data.displayName || MemberId,
+//       data.body.msg || data.message
+//     ); // Adjust according to actual message format
 //   }
 // };
+
+const addUserToChatRoom = async (
+  channelName,
+  groupId,
+  chatUserName,
+  status = true
+) => {
+  const url = `${API_BASE_URL}/chat/room/user/token?channelName=${channelName}&groupId=${groupId}&chatUserName=${chatUserName}&status=${status}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+    console.log("Fetched user add to room data:", data);
+  } catch (error) {
+    console.error("Error fetching user token:", error);
+    alert("An error occurred while fetching the user add to room data.");
+  }
+};
+
+let sendMessage = async (e) => {
+  e.preventDefault();
+
+  let message = e.target.message.value;
+  const from = chatUserName;
+  const to = groupId;
+
+  // Call the updated send message function
+  // await sendMessageToRoom(message, from, to);
+  await sendMessageToRTMChannel(message);
+
+  addMessageToDom(from, message);
+
+  e.target.reset();
+};
+
+const sendMessageToRoom = async (message, from, to) => {
+  const body = {
+    from: from,
+    to: [to],
+    type: "txt",
+    body: {
+      msg: message,
+    },
+  };
+
+  try {
+    const response = await fetch(
+      "https://dev.gigagates.com/social-commerce-backend/v1/chat/room/send",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log("Message sent successfully:", data);
+    } else {
+      console.error("Failed to send message:", data);
+    }
+  } catch (error) {
+    console.error("Error sending message:", error);
+  }
+};
+
+let addMessageToDom = (name, message) => {
+  let messagesWrapper = document.getElementById("messages");
+
+  let newMessage = `<div class="message__wrapper">
+                        <div class="message__body">
+                            <strong class="message__author">${name}</strong>
+                            <p class="message__text">${message}</p>
+                        </div>
+                    </div>`;
+
+  // Add the new message to the DOM
+  messagesWrapper.insertAdjacentHTML("beforeend", newMessage);
+
+  // Scroll to the latest message
+  let lastMessage = document.querySelector(
+    "#messages .message__wrapper:last-child"
+  );
+  if (lastMessage) {
+    lastMessage.scrollIntoView({ behavior: "smooth" });
+  }
+};
+
+async function sendWelcomeMessage(username, groupId) {
+  const messagePayload = {
+    from: username,
+    to: [groupId],
+    type: "txt",
+    body: {
+      msg: `Hello everyone, ${username} has joined!`, // Welcome messages
+    },
+  };
+
+  try {
+    const response = await fetch(
+      "https://dev.gigagates.com/social-commerce-backend/v1/chat/room/send",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messagePayload),
+      }
+    );
+
+    const data = await response.json();
+    console.log("Response data welcome message: ", data);
+
+    if (response.ok) {
+      console.log("Welcome message sent successfully.");
+    } else {
+      console.error("Failed to send welcome message.");
+    }
+  } catch (error) {
+    console.error("Error sending welcome message:", error);
+  }
+}
 
 let addBotMessageToDom = (botMessage) => {
   let messagesWrapper = document.getElementById("messages");
 
   let newMessage = `<div class="message__wrapper">
                         <div class="message__body__bot">
-                            <strong class="message__author__bot">🤖 MyDay Bot</strong>
+                            <strong class="message__author__bot">🤖 Meet.MyDay Bot</strong>
                             <p class="message__text__bot">${botMessage}</p>
                         </div>
                     </div>`;

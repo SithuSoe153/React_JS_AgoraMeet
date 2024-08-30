@@ -3,7 +3,6 @@ const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);
 let roomId = urlParams.get("room");
-console.log(roomId);
 
 const form = document.getElementById("lobby__form");
 const roomInput = document.getElementById("room-input");
@@ -68,9 +67,6 @@ async function createNewRoom() {
   const accessToken = sessionStorage.getItem("access_token");
   const chatUserName = sessionStorage.getItem("chat_user_name");
 
-  console.log("Access Token:", accessToken);
-  console.log("Chat User Name:", chatUserName);
-
   try {
     const response = await fetch(`${API_BASE_URL}/chat/room/create`, {
       method: "POST",
@@ -94,9 +90,6 @@ async function createNewRoom() {
     if (response.ok && data && data.data) {
       const newRoomId = data.data.id; // Check the response structure
       const inviteCode = data.data.data; // Ensure this is correct
-
-      console.log("New Room ID:", newRoomId);
-      console.log("Invite Code:", inviteCode);
 
       sessionStorage.setItem("new_room_id", newRoomId);
 

@@ -9,8 +9,10 @@ let rtcToken;
 let groupId;
 
 let client;
+let channel;
 
 let rtmClient;
+let rtmToken;
 let localTracks = [];
 let remoteUsers = {};
 
@@ -59,7 +61,6 @@ async function fetchMeetingDetails() {
       rtcToken = data.data.token;
       channelName = data.data.channelName;
       groupId = data.data.groupId;
-      console.log("fetch groupid: ", groupId);
 
       return { rtcToken, channelName, groupId };
     } else {
@@ -82,218 +83,30 @@ if (!displayName && !roomId) {
   alert("Please login first");
 }
 
-// let joinRoomInit = async () => {
-//   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-//   const meetingDetails = await fetchMeetingDetails();
-//   const clientToken = meetingDetails.rtcToken;
-//   const clientChannelName = meetingDetails.channelName;
-
-//   // await client.join(APP_ID, clientChannelName, clientToken, uid);
-//   await client.join(clientToken, clientChannelName, null, uid);
-
-//   client.on("user-published", handleUserPublished);
-//   client.on("user-left", handleUserLeft);
-// };
-
-// Message Start
-
 async function getRtmToken(chatUserName) {
-  const USERNAME = "b0994be0912d4f0ca681f9c9889b8111";
-  const PASSWORD = "6a310fd721ce410ca7c15ef71aa88aff";
-
-  const url =
-    "https://dev.gigagates.com/qq_backend_agora/v1/agora/generateRtmToken?userId=tester112&expirationInSeconds=86400000";
-
   try {
     const response = await fetch(
-      "https://dev.gigagates.com/qq_backend_agora/v1/agora/generateRtmToken?userId=tester112&expirationInSeconds=86400000",
+      // `${API_BASE_URL}/chat/user/${chatUserName}/token`,
+      `${API_BASE_URL}/agora/generateRtmToken?userId=${chatUserName}&expirationInSeconds=86400000`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Basic " + btoa(`${USERNAME}:${PASSWORD}`),
         },
       }
     );
 
-    const data = await response.json();
-    console.log("check1: ");
+    rtmToken = await response.text();
 
     if (response.ok) {
-      console.log("check2: ");
-      return data.token; // Adjust according to the actual response structure
+      return rtmToken; // Adjust according to the actual response structure
     } else {
       console.error("Failed to fetch RTM token:", data);
-      alert("Okay Okay check ");
       return null;
     }
   } catch (error) {
     console.error("Error fetching RTM token:", error);
-    alert("Okay Okay Noo ", error);
     return null;
-  }
-}
-
-const addUserToChatRoom = async (
-  channelName,
-  groupId,
-  chatUserName,
-  status = true
-) => {
-  const url = `${API_BASE_URL}/chat/room/user/token?channelName=${channelName}&groupId=${groupId}&chatUserName=${chatUserName}&status=${status}`;
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const data = await response.json();
-    console.log("Fetched user add to room data:", data);
-  } catch (error) {
-    console.error("Error fetching user token:", error);
-    alert("An error occurred while fetching the user add to room data.");
-  }
-};
-
-const sendMessageToRoom = async (message, from, to) => {
-  const body = {
-    from: from,
-    to: [to],
-    type: "txt",
-    body: {
-      msg: message,
-    },
-  };
-
-  try {
-    const response = await fetch(
-      "https://dev.gigagates.com/social-commerce-backend/v1/chat/room/send",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const data = await response.json();
-
-    if (response.ok) {
-      console.log("Message sent successfully:", data);
-    } else {
-      console.error("Failed to send message:", data);
-    }
-  } catch (error) {
-    console.error("Error sending message:", error);
-  }
-};
-
-let sendMessage = async (e) => {
-  e.preventDefault();
-
-  let message = e.target.message.value;
-  const from = chatUserName;
-  const to = groupId;
-
-  // Call the updated send message function
-  await sendMessageToRoom(message, from, to);
-
-  addMessageToDom(from, message);
-
-  e.target.reset();
-};
-
-// Function to handle incoming messages in the channel
-let handleChannelMessage = async (messageData, MemberId) => {
-  console.log("A new message was received");
-  let data;
-  try {
-    data = JSON.parse(messageData.text);
-  } catch (error) {
-    console.error("Failed to parse incoming message data:", error);
-    return;
-  }
-
-  // Display chat messages
-  if (data.type === "chat") {
-    addMessageToDom(data.displayName || MemberId, data.message);
-  }
-
-  // Handle when a user leaves
-  if (data.type === "user_left") {
-    let userContainer = document.getElementById(`user-container-${data.uid}`);
-    if (userContainer) {
-      userContainer.remove();
-    }
-
-    if (userIdInDisplayFrame === `user-container-${uid}`) {
-      displayFrame.style.display = null;
-
-      for (let i = 0; i < videoFrames.length; i++) {
-        videoFrames[i].style.height = "300px";
-        videoFrames[i].style.width = "300px";
-      }
-    }
-  }
-};
-
-let addMessageToDom = (name, message) => {
-  let messagesWrapper = document.getElementById("messages");
-
-  let newMessage = `<div class="message__wrapper">
-                        <div class="message__body">
-                            <strong class="message__author">${name}</strong>
-                            <p class="message__text">${message}</p>
-                        </div>
-                    </div>`;
-
-  messagesWrapper.insertAdjacentHTML("beforeend", newMessage);
-
-  let lastMessage = document.querySelector(
-    "#messages .message__wrapper:last-child"
-  );
-  if (lastMessage) {
-    lastMessage.scrollIntoView();
-  }
-};
-
-async function sendWelcomeMessage(username, groupId) {
-  const messagePayload = {
-    from: username,
-    to: [groupId],
-    type: "txt",
-    body: {
-      msg: `Hello everyone, ${username} has joined!`, // Welcome messages
-    },
-  };
-
-  try {
-    const response = await fetch(
-      "https://dev.gigagates.com/social-commerce-backend/v1/chat/room/send",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messagePayload),
-      }
-    );
-
-    const data = await response.json();
-    console.log("Response data welcome message: ", data);
-
-    if (response.ok) {
-      console.log("Welcome message sent successfully.");
-    } else {
-      console.error("Failed to send welcome message.");
-    }
-  } catch (error) {
-    console.error("Error sending welcome message:", error);
   }
 }
 
@@ -307,14 +120,10 @@ async function joinRoomInit() {
   // RTM Start
   rtmClient = await AgoraRTM.createInstance(APP_ID);
 
-  // Define the RTM User ID and Token
-  const rtmUser = "tester112"; // Make sure this matches Agora's user ID requirements
-  const rtmToken =
-    "00619547e2b1603452688a040cc0a219aeaIAD/riXSsBwRreqX4pHGAvDNHwjzoZ4jX0AVI6pTAcOH4XbkuSUAAAAAEAB689sds9vRZgEA6AMz5vZr"; // Ensure this token is correct and not expired
+  await getRtmToken(chatUserName);
 
-  // Attempt to login with RTM Client
   try {
-    await rtmClient.login({ token: rtmToken, uid: rtmUser });
+    await rtmClient.login({ token: rtmToken, uid: chatUserName });
     console.log("RTM Client logged in successfully.");
   } catch (error) {
     console.error("RTM login failed:", error);
@@ -323,7 +132,7 @@ async function joinRoomInit() {
   }
 
   // Create and join the channel
-  const channel = rtmClient.createChannel(channelName);
+  channel = rtmClient.createChannel(groupId);
   try {
     await channel.join();
     console.log("Joined RTM channel successfully.");
@@ -333,12 +142,13 @@ async function joinRoomInit() {
   }
 
   // Set up message handler for the channel
+  channel.on("MemberJoined", handleMemberJoined);
+  channel.on("MemberLeft", handleMemberLeft);
   channel.on("ChannelMessage", handleChannelMessage);
 
   // RTM End
 
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-  // await client.join(APP_ID, clientChannelName, clientToken, uid);
   await client.join(clientToken, clientChannelName, null, uid);
 
   client.on("user-published", handleUserPublished);
@@ -350,16 +160,7 @@ async function joinRoomInit() {
 
   await sendWelcomeMessage(chatUserName, groupId);
 
-  await getRtmToken(chatUserName);
-
-  console.log(
-    "channel: ",
-    channelName,
-    "groupId: ",
-    groupId,
-    "chatUserName: ",
-    chatUserName
-  );
+  getMembers();
 }
 
 let joinStream = async () => {
