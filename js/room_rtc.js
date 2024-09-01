@@ -46,8 +46,8 @@ const getRoomDetails = async (groupId) => {
 async function fetchMeetingDetails() {
   try {
     const response = await fetch(
-      // `${API_BASE_URL}/chat/room/list?chatRoomGuid=${meetingGuid}`,
-      `${API_BASE_URL}/chat/room/list?chatRoomGuid=d48e58a2-8d30-4ea8-952f-ca3003f2d32d`,
+      `${API_BASE_URL}/chat/room/list?chatRoomGuid=${meetingGuid}`,
+      // `${API_BASE_URL}/chat/room/list?chatRoomGuid=d48e58a2-8d30-4ea8-952f-ca3003f2d32d`,
       {
         method: "GET",
       }

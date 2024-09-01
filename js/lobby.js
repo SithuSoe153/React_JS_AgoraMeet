@@ -49,6 +49,8 @@ async function fetchUserBrief() {
 
     if (response.ok) {
       const { chatUserName } = data.data;
+      console.log("chatUserName:", chatUserName);
+      
       sessionStorage.setItem("chat_user_name", chatUserName);
     } else {
       console.error("Failed to fetch user brief:", data);
@@ -97,7 +99,7 @@ async function createNewRoom() {
     } else {
       console.error("Failed to create room:", data);
       alert("Failed to create room. Please try again.");
-      return null;
+      // return null;
     }
   } catch (error) {
     console.error("Error creating room:", error);

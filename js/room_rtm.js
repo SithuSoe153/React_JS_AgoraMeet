@@ -166,7 +166,6 @@ const sendMessageToRTMChannel = async (message) => {
   }
 };
 
-// sendMessageToRTMChannel("testmessages");
 
 // const handleChannelMessage = async (messageData, MemberId) => {
 //   console.log("A new message was received from:", MemberId);
