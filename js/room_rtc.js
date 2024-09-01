@@ -1,8 +1,19 @@
-const APP_ID = "69b5921596cd4632a94ead5fe6706777";
+const APP_ID = "19547e2b1603452688a040cc0a219aea";
 const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 
-let uid = sessionStorage.getItem("display_name");
+let uid = sessionStorage.getItem("display_name")?.replace(/\s+/g, "");
 let chatUserName = sessionStorage.getItem("chat_user_name");
+
+// let uid = sessionStorage.getItem("chat_user_name");
+
+// let chatUserName = sessionStorage.getItem("chat_user_name");
+
+if (!chatUserName) {
+  console.log("chatUserName is not set in sessionStorage");
+
+  chatUserName = sessionStorage.getItem("display_name");
+  sessionStorage.setItem("chat_user_name", chatUserName);
+}
 
 let channelName;
 let rtcToken;
@@ -98,6 +109,9 @@ async function getRtmToken(chatUserName) {
 
     rtmToken = await response.text();
 
+    console.log("name", chatUserName);
+    console.log("Response data rtm token:", rtmToken);
+
     if (response.ok) {
       return rtmToken; // Adjust according to the actual response structure
     } else {
@@ -114,16 +128,20 @@ async function getRtmToken(chatUserName) {
 
 async function joinRoomInit() {
   const meetingDetails = await fetchMeetingDetails();
-  const clientToken = meetingDetails.rtcToken;
+  let clientToken = meetingDetails.rtcToken;
+  clientToken =
+    "00619547e2b1603452688a040cc0a219aeaIAA7vcA/Yz21+e2I3VCqJLMAVHiNtdAiRB/IOAnIvDKK5a0Tte8AAAAAIgDwwCugBd3VZgQAAQCF5/prAgCF5/prAwCF5/prBACF5/pr";
+
   const clientChannelName = meetingDetails.channelName;
+  console.log("channelName", uid);
 
   // RTM Start
   rtmClient = await AgoraRTM.createInstance(APP_ID);
 
-  await getRtmToken(chatUserName);
+  await getRtmToken(displayName);
 
   try {
-    await rtmClient.login({ token: rtmToken, uid: chatUserName });
+    await rtmClient.login({ token: rtmToken, uid: displayName });
     console.log("RTM Client logged in successfully.");
   } catch (error) {
     console.error("RTM login failed:", error);
@@ -148,6 +166,8 @@ async function joinRoomInit() {
 
   // RTM End
 
+  console.log("uid", uid);
+
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
   await client.join(clientToken, clientChannelName, null, uid);
 
@@ -155,8 +175,8 @@ async function joinRoomInit() {
   client.on("user-left", handleUserLeft);
 
   await fetchMeetingDetails();
-  await getRoomDetails(groupId);
-  await addUserToChatRoom(channelName, groupId, chatUserName);
+  // await getRoomDetails(groupId);
+  // await addUserToChatRoom(channelName, groupId, chatUserName);
 
   await sendWelcomeMessage(chatUserName, groupId);
 

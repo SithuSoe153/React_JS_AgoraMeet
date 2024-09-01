@@ -166,7 +166,6 @@ const sendMessageToRTMChannel = async (message) => {
   }
 };
 
-
 // const handleChannelMessage = async (messageData, MemberId) => {
 //   console.log("A new message was received from:", MemberId);
 //   let data;
@@ -215,8 +214,8 @@ let sendMessage = async (e) => {
   e.preventDefault();
 
   let message = e.target.message.value;
-  const from = chatUserName;
-  const to = groupId;
+  const from = displayName;
+  // const to = groupId;
 
   // Call the updated send message function
   // await sendMessageToRoom(message, from, to);

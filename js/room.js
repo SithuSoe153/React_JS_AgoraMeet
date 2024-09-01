@@ -59,6 +59,17 @@ for(let i = 0; videoFrames.length > i; i++){
   videoFrames[i].addEventListener('click', expandVideoFrame)
 }
 
+    document.getElementById('copy__link__btn').addEventListener('click', function() {
+        const currentUrl = window.location.href;
+        const modifiedUrl = currentUrl.replace('room.html', 'lobby.html');
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(modifiedUrl).then(() => {
+            alert('Link copied to clipboard: ' + modifiedUrl);
+        }).catch(err => {
+            console.error('Failed to copy the text: ', err);
+        });
+    });
 
 let hideDisplayFrame = () => {
     userIdInDisplayFrame = null

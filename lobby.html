@@ -52,6 +52,17 @@
                      <input type="text" name="room" id="room-input" placeholder="Enter room name..." />
                  </div>
  
+                 <div class="form__field__wrapper"  id="meeting-title-container">
+                    <label>Meeting Title</label>
+                    <input type="text" name="title" id="meeting-title" required placeholder="Enter the meeting title..." />
+                </div>
+
+                <div class="form__field__wrapper" id="max-users-container">
+                    <label>Max Users</label>
+                    <input type="number" max="30" name="maxusers" id="max-users" placeholder="Enter max users..." />
+                    <small>Default is 10 users if not specified.</small>
+                </div>
+                
                  <div class="form__field__wrapper">
                      <button type="submit">Go to Room 
                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z"/></svg>

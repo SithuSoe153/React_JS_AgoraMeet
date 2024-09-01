@@ -134,6 +134,18 @@ a {
 #create__room__btn:hover {
   background-color: #845695;
 }
+#copy__link__btn {
+  display: block;
+  background-color: #845695;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 5px;
+}
+
+#copy__link__btn:hover {
+  background-color: #845695;
+}
 
 .nav--list {
   display: flex;
@@ -170,6 +182,7 @@ a {
     height: 1.5rem;
   }
   .nav__link,
+
   #create__room__btn {
     font-size: 0;
     border: none;
@@ -181,7 +194,21 @@ a {
     border-radius: 50%;
   }
 
-  #create__room__btn:hover {
+  #copy__link__btn:hover {
+    background-color: transparent;
+  }
+  #copy__link__btn {
+    font-size: 0;
+    border: none;
+  }
+
+  #copy__link__btn {
+    padding: 0;
+    background-color: transparent;
+    border-radius: 50%;
+  }
+
+  #copy__link__btn:hover {
     background-color: transparent;
   }
 }
