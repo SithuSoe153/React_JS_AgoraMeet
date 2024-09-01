@@ -1,7 +1,7 @@
 const APP_ID = "19547e2b1603452688a040cc0a219aea";
 const API_BASE_URL = "https://dev.gigagates.com/social-commerce-backend/v1";
 
-let uid = sessionStorage.getItem("display_name")?.replace(/\s+/g, "");
+let uid = sessionStorage.getItem("display_name");
 let chatUserName = sessionStorage.getItem("chat_user_name");
 
 // let uid = sessionStorage.getItem("chat_user_name");
@@ -169,7 +169,12 @@ async function joinRoomInit() {
   console.log("uid", uid);
 
   client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-  await client.join(clientToken, clientChannelName, null, uid);
+  await client.join(
+    clientToken,
+    clientChannelName,
+    null,
+    uid?.replace(/\s+/g, "")
+  );
 
   client.on("user-published", handleUserPublished);
   client.on("user-left", handleUserLeft);
@@ -189,9 +194,11 @@ let joinStream = async () => {
 
   localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
 
-  let player = `<div class="video__container" id="user-container-${uid}">
-                    <div class="video-player" id="user-${uid}"></div>
-                 </div>`;
+  let player = `
+    <div class="video__container" id="user-container-${uid}">
+      <div class="video-player" id="user-${uid}"></div>
+      <div class="video-name">${displayName}</div>
+    </div>`;
 
   document
     .getElementById("streams__container")
@@ -204,18 +211,6 @@ let joinStream = async () => {
   await client.publish(localTracks);
 };
 
-let switchToCamera = async () => {
-  let player = `<div class="video__container" id="user-container-${uid}">
-                    <div class="video-player" id="user-${uid}"></div>
-                 </div>`;
-  document
-    .getElementById("streams__container")
-    .insertAdjacentHTML("beforeend", player);
-
-  localTracks[1].play(`user-${uid}`);
-  await client.publish(localTracks);
-};
-
 let handleUserPublished = async (user, mediaType) => {
   remoteUsers[user.uid] = user;
   await client.subscribe(user, mediaType);
@@ -223,9 +218,11 @@ let handleUserPublished = async (user, mediaType) => {
   if (mediaType === "video") {
     let player = document.getElementById(`user-container-${user.uid}`);
     if (player === null) {
-      player = `<div class="video__container" id="user-container-${user.uid}">
-                        <div class="video-player" id="user-${user.uid}"></div>
-                      </div>`;
+      player = `
+        <div class="video__container" id="user-container-${user.uid}">
+          <div class="video-player" id="user-${user.uid}"></div>
+          <div class="video-name">${user.uid}</div>
+        </div>`;
       document
         .getElementById("streams__container")
         .insertAdjacentHTML("beforeend", player);
@@ -239,6 +236,18 @@ let handleUserPublished = async (user, mediaType) => {
   if (mediaType === "audio") {
     user.audioTrack.play();
   }
+};
+
+let switchToCamera = async () => {
+  let player = `<div class="video__container" id="user-container-${uid}">
+                    <div class="video-player" id="user-${uid}"></div>
+                 </div>`;
+  document
+    .getElementById("streams__container")
+    .insertAdjacentHTML("beforeend", player);
+
+  localTracks[1].play(`user-${uid}`);
+  await client.publish(localTracks);
 };
 
 let handleUserLeft = async (user) => {
@@ -299,6 +308,7 @@ let toggleScreen = async (e) => {
 
     let player = `<div class="video__container" id="user-container-${uid}">
                         <div class="video-player" id="user-${uid}"></div>
+                        <div class="video-name" id="name-${displayName}"></div>
                       </div>`;
     displayFrame.insertAdjacentHTML("beforeend", player);
     document
