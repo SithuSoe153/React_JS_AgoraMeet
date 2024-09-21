@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/lobby.css";
+import Preview from '../components/Preview'; // Import the new Preview component
 import Button from '@mui/material/Button'
 
 const Lobby = () => {
@@ -17,6 +18,10 @@ const Lobby = () => {
   const [rtcChannelName, setRtcChannelName] = useState(
     sessionStorage.getItem("rtc_channel")
   );
+  const [showPreview, setShowPreview] = useState(false); // New state to control the preview display
+  const [prevMicOn, setMicOn] = useState(true);
+  const [prevCameraOn, setCameraOn] = useState(true);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,8 +88,14 @@ const Lobby = () => {
       await createNewRoom();
       alert("The room is created");
     } else {
-      navigate(`/room?room=${roomId}`);
+      setShowPreview(true);
+
+      // navigate(`/room?room=${roomId}`);
     }
+  };
+
+  const handleJoinMeeting = () => {
+    navigate(`/room?room=${roomId}`, { state: {prevMicOn, prevCameraOn } });
   };
 
   return (
@@ -127,86 +138,97 @@ const Lobby = () => {
         </div>
       </header>
 
-      <main id="room__lobby__container">
-        <div id="form__container">
-          <div id="form__container__header">
-            <p>👋 Create or Join Room</p>
+      {showPreview ? (
+        <Preview
+          onJoin={handleJoinMeeting}
+          onCancel={() => setShowPreview(false)}
+          micOn={prevMicOn}
+          setMicOn={setMicOn}
+          cameraOn={prevCameraOn}
+          setCameraOn={setCameraOn} />
+      ) : (
+
+        <main id="room__lobby__container">
+          <div id="form__container">
+            <div id="form__container__header">
+              <p>👋 Create or Join Room</p>
+            </div>
+
+            <form id="lobby__form" onSubmit={handleSubmit}>
+              <div className="form__field__wrapper">
+                <label>Your Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  id="username"
+                  placeholder="Enter your display name..."
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+
+              {!roomId && (
+                <>
+                  <div className="form__field__wrapper">
+                    <label>Meeting Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      id="meeting-title"
+                      placeholder="Enter the meeting title..."
+                      value={meetingTitle}
+                      onChange={(e) => setMeetingTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form__field__wrapper">
+                    <label>Max Users</label>
+                    <input
+                      type="number"
+                      max="30"
+                      name="maxusers"
+                      id="max-users"
+                      placeholder="Enter max users..."
+                      value={maxUsers}
+                      onChange={(e) => setMaxUsers(e.target.value)}
+                    />
+                    <small>Default is 10 users if not specified.</small>
+                  </div>
+                  <div className="form__field__wrapper">
+                    <button type="submit" onClick={createNewRoom}>
+                      Craete New Room
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
+                      </svg>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <div className="form__field__wrapper">
+                <button type="submit">
+                  Go to Room
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
+                  </svg>
+                </button>
+              </div>
+            </form>
           </div>
-
-          <form id="lobby__form" onSubmit={handleSubmit}>
-            <div className="form__field__wrapper">
-              <label>Your Name</label>
-              <input
-                type="text"
-                name="name"
-                id="username"
-                placeholder="Enter your display name..."
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-
-            {!roomId && (
-              <>
-                <div className="form__field__wrapper">
-                  <label>Meeting Title</label>
-                  <input
-                    type="text"
-                    name="title"
-                    id="meeting-title"
-                    placeholder="Enter the meeting title..."
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form__field__wrapper">
-                  <label>Max Users</label>
-                  <input
-                    type="number"
-                    max="30"
-                    name="maxusers"
-                    id="max-users"
-                    placeholder="Enter max users..."
-                    value={maxUsers}
-                    onChange={(e) => setMaxUsers(e.target.value)}
-                  />
-                  <small>Default is 10 users if not specified.</small>
-                </div>
-                <div className="form__field__wrapper">
-                  <button type="submit" onClick={createNewRoom}>
-                    Craete New Room
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
-                    </svg>
-                  </button>
-                </div>
-              </>
-            )}
-
-            <div className="form__field__wrapper">
-              <button type="submit">
-                Go to Room
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
-                </svg>
-              </button>
-            </div>
-          </form>
-        </div>
-      </main>
+        </main>
+      )}
     </div>
   );
 };

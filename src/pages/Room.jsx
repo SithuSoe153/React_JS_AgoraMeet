@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
+import { useLocation } from "react-router-dom";
+
 import "../styles/room.css";
 
 const Room = () => {
+  const location = useLocation();
+  const { prevMicOn, prevCameraOn } = location.state || {}; // Access the state passed from Lobby.jsx
+
   const [localTracks, setLocalTracks] = useState([]);
   const [remoteUsers, setRemoteUsers] = useState({});
   const [joined, setJoined] = useState(false);
@@ -14,9 +19,13 @@ const Room = () => {
   const [rtcToken, setRtcToken] = useState(null);
   const [channelName, setChannelName] = useState(null);
 
-  const [micOn, setMicOn] = useState(true);
-  const [cameraOn, setCameraOn] = useState(true);
+  const [micOn, setMicOn] = useState(prevMicOn);
+  const [cameraOn, setCameraOn] = useState(prevCameraOn);
   const [sharingScreen, setSharingScreen] = useState(false);
+
+  console.log("cameraa", cameraOn);
+
+
 
   const client = useRef(null);
   const rtmClient = useRef(null);
@@ -26,6 +35,9 @@ const Room = () => {
 
   useEffect(() => {
     const init = async () => {
+
+
+
       // Initializing RTC client
       client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
