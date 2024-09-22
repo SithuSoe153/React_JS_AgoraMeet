@@ -21,10 +21,11 @@ const Room = () => {
 
   const [micOn, setMicOn] = useState(prevMicOn);
   const [cameraOn, setCameraOn] = useState(prevCameraOn);
+  const [bothOff, setBothOff] = useState(!micOn && !cameraOn); // Track if both are off
+
   const [sharingScreen, setSharingScreen] = useState(false);
 
-  console.log("cameraa", cameraOn);
-
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
   const client = useRef(null);
@@ -35,9 +36,6 @@ const Room = () => {
 
   useEffect(() => {
     const init = async () => {
-
-
-
       // Initializing RTC client
       client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
@@ -48,11 +46,10 @@ const Room = () => {
       const { token: rtcToken, channelName } = meetingDetails;
       let uid = Math.floor(Math.random() * 10000);
 
-      // Log fetched rtcToken and channelName
-      console.log("Tester", rtcToken, channelName);
 
       // Join the RTC channel
-      await client.current.join(rtcToken, channelName, null, uid);
+      // await client.current.join(rtcToken, channelName, null, uid);
+      await client.current.join("00619547e2b1603452688a040cc0a219aeaIAByBYKSHPFISmioGgNuSV0sB/fOrvmyje7qDvcE3PJ1+a0Tte8AAAAAIgAuyDnmI/jwZgQAAQCjAhZsAgCjAhZsAwCjAhZsBACjAhZs", channelName, null, uid);
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
@@ -98,72 +95,108 @@ const Room = () => {
     }
   };
 
-
   const joinStream = async () => {
     try {
-      // Create microphone and camera tracks
-      const tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
-      setLocalTracks(tracks);
+      let audioTrack, videoTrack;
 
-      // Create local player container if it doesn't already exist
-      let playerContainer = document.getElementById('user-container-local');
-      if (!playerContainer) {
-        let player = `
+      // Create audio and video tracks regardless of initial mic and camera settings
+      audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ microphoneId: "", muted: !micOn });
+      videoTrack = await AgoraRTC.createCameraVideoTrack({ cameraId: "", muted: !cameraOn });
+      // audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
+      // videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
+
+      const tracksToPublish = [audioTrack, videoTrack];
+      setLocalTracks([audioTrack, videoTrack]);
+
+      // Create player container for local user
+      if (!document.getElementById("user-container-local")) {
+        const player = `
           <div class="video__container" id="user-container-local">
             <div class="video-player" id="user-local"></div>
-            <div class="video-name">Users</div>
-
+            <div class="video-name">You</div>
+            <div class="placeholder" id="placeholder-local">
+              Camera and Mic are off
+            </div>
           </div>`;
-        document.getElementById("streams__container").insertAdjacentHTML("beforeend", player);
+        document
+          .getElementById("streams__container")
+          .insertAdjacentHTML("beforeend", player);
       }
 
-      // Play local video track
-      tracks[1].play("user-local");
+      const placeholder = document.getElementById("placeholder-local");
 
-      // Publish local tracks to the client
-      await client.current.publish(tracks);
-      console.log("Local tracks published:", tracks);
+      // Always show the container
+      const localContainer = document.getElementById("user-container-local");
+      localContainer.style.display = "block";
+
+      // Publish tracks initially
+      await client.current.publish(tracksToPublish);
+
+      // Handle mic and camera states after publishing
+      if (!micOn) {
+        await audioTrack.setMuted(true); // Mute audio instead of disabling
+      }
+
+      if (!cameraOn) {
+        await videoTrack.setMuted(true); // Mute video instead of disabling
+        placeholder.style.display = "block"; // Show placeholder if video is off
+      } else {
+        videoTrack.play("user-local");
+        placeholder.style.display = "none"; // Hide placeholder if video is available
+      }
+
+      // Handle user-published event
+      client.current.on("user-published", handleUserPublished);
     } catch (error) {
       console.error("Error joining stream:", error);
     }
   };
 
-
   const handleUserPublished = async (user, mediaType) => {
-    console.log("user", user);
-
-
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
-    await client.current.subscribe(user, mediaType).catch(console.error);
+    try {
+      await client.current.subscribe(user, mediaType);
 
-    if (mediaType === "video") {
+      // Create the user container if it doesn't exist
       let playerContainer = document.getElementById(`user-container-${user.uid}`);
       if (!playerContainer) {
         let player = `
           <div class="video__container" id="user-container-${user.uid}">
             <div class="video-player" id="user-${user.uid}"></div>
-            <div class="video-name">Users</div>
+            <div class="video-name">User ${user.uid}</div>
+            <div class="placeholder" id="placeholder-${user.uid}">Camera is off</div>
           </div>`;
-
-        // let player = `
-        //   <h1>Tester</h1>
-        //   <div class="video__container" id="user-container-${user.uid}">
-        //     <div class="video-player" id="user-${user.uid}"></div>
-        //     <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
-        //   </div>`;
-
-        document.getElementById("streams__container").insertAdjacentHTML("beforeend", player);
+        document
+          .getElementById("streams__container")
+          .insertAdjacentHTML("beforeend", player);
       }
 
-      user.videoTrack.play(`user-${user.uid}`);
-    }
+      // Manage placeholder visibility based on video track
+      const placeholder = document.getElementById(`placeholder-${user.uid}`);
+      if (mediaType === "video" && user.videoTrack) {
+        user.videoTrack.play(`user-${user.uid}`);
+        if (placeholder) placeholder.style.display = "none"; // Hide placeholder if video is available
+      } else {
+        if (placeholder) placeholder.style.display = "block"; // Show placeholder if video is off
+      }
 
-    if (mediaType === "audio") {
-      user.audioTrack.play();
+      // Always play audio if available
+      if (mediaType === "audio" && user.audioTrack) {
+        user.audioTrack.play();
+      }
+
+      // Handle the scenario where a user joins with no mic and camera
+      if (!user.audioTrack && !user.videoTrack) {
+        const container = document.getElementById(`user-container-${user.uid}`);
+        if (container) {
+          container.style.display = "block"; // Ensure the container is visible
+          placeholder.style.display = "block"; // Show placeholder
+        }
+      }
+    } catch (error) {
+      console.error(`Error handling user published: ${error}`);
     }
   };
-
-
 
   const handleUserLeft = (user) => {
     delete remoteUsers[user.uid];
@@ -173,24 +206,44 @@ const Room = () => {
     }
   };
 
-
-
   const toggleMic = async () => {
     try {
       if (localTracks[0]) {
-        await localTracks[0].setMuted(!micOn);
-        setMicOn((prev) => !prev);
+        const isMuted = localTracks[0].muted;
+        await localTracks[0].setMuted(!isMuted);
+        setMicOn(!isMuted);
+        setBothOff(!cameraOn && isMuted); // Update bothOff state
+        console.log(isMuted ? "Microphone unmuted." : "Microphone muted.");
       }
     } catch (error) {
-      console.error("Error toggling mic:", error);
+      console.error("Error toggling microphone:", error);
     }
   };
 
   const toggleCamera = async () => {
     try {
-      if (localTracks[1]) {
-        await localTracks[1].setMuted(!cameraOn);
-        setCameraOn((prev) => !prev);
+      if (!localTracks[1]) {
+        localTracks[1] = await AgoraRTC.createCameraVideoTrack({ muted: true });
+        setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
+      }
+
+      const isMuted = localTracks[1].muted;
+      if (isMuted) {
+        await localTracks[1].setMuted(false);
+        localTracks[1].play("user-local");
+        const placeholder = document.getElementById("placeholder-local");
+        if (placeholder) placeholder.style.display = "none";
+        setCameraOn(true);
+        setBothOff(false); // Update bothOff state
+        console.log("Camera turned on.");
+      } else {
+        await localTracks[1].setMuted(true);
+        localTracks[1].stop();
+        const placeholder = document.getElementById("placeholder-local");
+        if (placeholder) placeholder.style.display = "block";
+        setCameraOn(false);
+        setBothOff(!micOn && true); // Update bothOff state
+        console.log("Camera turned off.");
       }
     } catch (error) {
       console.error("Error toggling camera:", error);
@@ -250,10 +303,6 @@ const Room = () => {
       }
     }
   };
-
-
-
-
 
   const leaveStream = async () => {
     try {
