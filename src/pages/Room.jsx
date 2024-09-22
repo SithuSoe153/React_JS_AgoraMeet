@@ -3,7 +3,19 @@ import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
 import { useLocation } from "react-router-dom";
 
+// Buttons
+
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import VideocamOffIcon from "@mui/icons-material/VideocamOff";
+import ScreenShareIcon from "@mui/icons-material/ScreenShare";
+import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
+
+
 import "../styles/room.css";
+import { Button, IconButton } from "@mui/material";
 
 const Room = () => {
   const location = useLocation();
@@ -24,6 +36,9 @@ const Room = () => {
   const [bothOff, setBothOff] = useState(!micOn && !cameraOn); // Track if both are off
 
   const [sharingScreen, setSharingScreen] = useState(false);
+
+  const [leftMeeting, setLeftMeeting] = useState(false); // New state for tracking if user left
+
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -95,15 +110,18 @@ const Room = () => {
     }
   };
 
+
+
   const joinStream = async () => {
     try {
       let audioTrack, videoTrack;
 
-      // Create audio and video tracks regardless of initial mic and camera settings
-      audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ microphoneId: "", muted: !micOn });
-      videoTrack = await AgoraRTC.createCameraVideoTrack({ cameraId: "", muted: !cameraOn });
+      // Create audio track regardless of initial mic setting
       // audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
-      // videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
+      audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+
+      // Create video track based on camera setting
+      videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
 
       const tracksToPublish = [audioTrack, videoTrack];
       setLocalTracks([audioTrack, videoTrack]);
@@ -114,9 +132,7 @@ const Room = () => {
           <div class="video__container" id="user-container-local">
             <div class="video-player" id="user-local"></div>
             <div class="video-name">You</div>
-            <div class="placeholder" id="placeholder-local">
-              Camera and Mic are off
-            </div>
+            <div class="placeholder" id="placeholder-local">Camera is Off</div>
           </div>`;
         document
           .getElementById("streams__container")
@@ -133,9 +149,9 @@ const Room = () => {
       await client.current.publish(tracksToPublish);
 
       // Handle mic and camera states after publishing
-      if (!micOn) {
-        await audioTrack.setMuted(true); // Mute audio instead of disabling
-      }
+      // if (!micOn) {
+      //   await audioTrack.setMuted(true); // Mute audio instead of disabling
+      // }
 
       if (!cameraOn) {
         await videoTrack.setMuted(true); // Mute video instead of disabling
@@ -147,10 +163,12 @@ const Room = () => {
 
       // Handle user-published event
       client.current.on("user-published", handleUserPublished);
+
     } catch (error) {
       console.error("Error joining stream:", error);
     }
   };
+
 
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
@@ -164,24 +182,40 @@ const Room = () => {
           <div class="video__container" id="user-container-${user.uid}">
             <div class="video-player" id="user-${user.uid}"></div>
             <div class="video-name">User ${user.uid}</div>
-            <div class="placeholder" id="placeholder-${user.uid}">Camera is off</div>
+            <div class="placeholder" id="placeholder-${user.uid}"></div>
           </div>`;
-        document
-          .getElementById("streams__container")
-          .insertAdjacentHTML("beforeend", player);
+        document.getElementById("streams__container").insertAdjacentHTML("beforeend", player);
       }
 
-      // Manage placeholder visibility based on video track
       const placeholder = document.getElementById(`placeholder-${user.uid}`);
-      if (mediaType === "video" && user.videoTrack) {
+      const hasVideoTrack = user.videoTrack && mediaType === "video";
+      const hasAudioTrack = user.audioTrack && mediaType === "audio";
+
+      // Manage placeholder visibility based on video track
+
+      if (hasAudioTrack && hasVideoTrack) {
+        placeholder.style.display = "none";
+      }
+
+      if (!hasAudioTrack && !hasVideoTrack) {
+        if (placeholder) {
+          placeholder.style.display = "block"; // Show placeholder if video is off
+          placeholder.innerText = "Camera and Mic are Off"; // Indicate video is off
+        }
+      }
+
+      if (hasVideoTrack && !hasAudioTrack) {
         user.videoTrack.play(`user-${user.uid}`);
         if (placeholder) placeholder.style.display = "none"; // Hide placeholder if video is available
       } else {
-        if (placeholder) placeholder.style.display = "block"; // Show placeholder if video is off
+        if (placeholder) {
+          placeholder.style.display = "block"; // Show placeholder if video is off
+          placeholder.innerText = "Camera is Off"; // Indicate video is off
+        }
       }
 
       // Always play audio if available
-      if (mediaType === "audio" && user.audioTrack) {
+      if (hasAudioTrack) {
         user.audioTrack.play();
       }
 
@@ -191,12 +225,15 @@ const Room = () => {
         if (container) {
           container.style.display = "block"; // Ensure the container is visible
           placeholder.style.display = "block"; // Show placeholder
+          placeholder.innerText = "Camera and Mic are Off"; // Indicate both are off
         }
       }
     } catch (error) {
       console.error(`Error handling user published: ${error}`);
     }
   };
+
+
 
   const handleUserLeft = (user) => {
     delete remoteUsers[user.uid];
@@ -206,19 +243,23 @@ const Room = () => {
     }
   };
 
+
   const toggleMic = async () => {
     try {
       if (localTracks[0]) {
         const isMuted = localTracks[0].muted;
         await localTracks[0].setMuted(!isMuted);
         setMicOn(!isMuted);
-        setBothOff(!cameraOn && isMuted); // Update bothOff state
+        setBothOff(!cameraOn && !isMuted); // Correctly update bothOff state
         console.log(isMuted ? "Microphone unmuted." : "Microphone muted.");
       }
     } catch (error) {
       console.error("Error toggling microphone:", error);
     }
   };
+
+
+
 
   const toggleCamera = async () => {
     try {
@@ -234,7 +275,7 @@ const Room = () => {
         const placeholder = document.getElementById("placeholder-local");
         if (placeholder) placeholder.style.display = "none";
         setCameraOn(true);
-        setBothOff(false); // Update bothOff state
+        setBothOff(!micOn && false); // Update bothOff state correctly
         console.log("Camera turned on.");
       } else {
         await localTracks[1].setMuted(true);
@@ -242,13 +283,15 @@ const Room = () => {
         const placeholder = document.getElementById("placeholder-local");
         if (placeholder) placeholder.style.display = "block";
         setCameraOn(false);
-        setBothOff(!micOn && true); // Update bothOff state
+        setBothOff(!micOn && !cameraOn); // Update bothOff state correctly
         console.log("Camera turned off.");
       }
     } catch (error) {
       console.error("Error toggling camera:", error);
     }
   };
+
+
 
 
   const toggleScreen = async () => {
@@ -304,6 +347,12 @@ const Room = () => {
     }
   };
 
+  const handleRejoin = () => {
+    // Logic for rejoining the stream
+    setJoined(true);
+    setLeftMeeting(false); // Reset when rejoining
+  };
+
   const leaveStream = async () => {
     try {
       // Stop and close all local tracks
@@ -324,6 +373,7 @@ const Room = () => {
       setLocalTracks([]);
       setJoined(false);
       setSharingScreen(false);
+      setLeftMeeting(true);
 
       // Leave the Agora RTC client
       await client.current.leave();
@@ -413,35 +463,85 @@ const Room = () => {
           <section id="stream__container">
             <div id="stream__box"></div>
             <div id="streams__container"></div>
-            <div className="stream__actions">
-              <button id="camera-btn" className="active">
-                Camera
-              </button>
-              <button id="mic-btn" className="active">
-                Mic
-              </button>
-              <button id="screen-btn">Screen</button>
-              <button id="leave-btn" style={{ backgroundColor: "#FF5050" }}>
-                Leave
-              </button>
-            </div>
 
-            {!joined && <button onClick={joinStream}>Join Stream</button>}
+            {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
 
             {joined && (
-              <div className="control-buttons">
-                <button onClick={toggleMic}>
-                  {micOn ? "Mute Mic" : "Unmute Mic"}
-                </button>
-                <button onClick={toggleCamera}>
-                  {cameraOn ? "Turn Off Camera" : "Turn On Camera"}
-                </button>
-                <button onClick={toggleScreen}>
-                  {sharingScreen ? "Stop Screen Share" : "Start Screen Share"}
-                </button>
-                <button onClick={leaveStream}>Leave</button>
+              <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+                <IconButton
+                  onClick={toggleMic}
+                  sx={{
+                    backgroundColor: micOn ? "#845695" : "#f0f0f0",
+                    color: micOn ? "#fff" : "#000",
+                    "&:hover": {
+                      backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
+                    },
+                  }}
+                >
+                  {micOn ? <MicIcon /> : <MicOffIcon />}
+                </IconButton>
+                <IconButton
+                  onClick={toggleCamera}
+                  sx={{
+                    backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
+                    color: cameraOn ? "#fff" : "#000",
+                    "&:hover": {
+                      backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
+                    },
+                  }}
+                >
+                  {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+                </IconButton>
+                <IconButton
+                  onClick={toggleScreen}
+                  sx={{
+                    backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
+                    color: sharingScreen ? "#fff" : "#000",
+                    "&:hover": {
+                      backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
+                    },
+                  }}
+                >
+                  {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+                </IconButton>
+                <IconButton
+                  // onClick={startRecording}
+                  sx={{
+                    backgroundColor: "#845695",
+                    color: "#fff",
+                    "&:hover": {
+                      backgroundColor: "#6d477c",
+                    },
+                  }}
+                >
+                  <RecordVoiceOverIcon />
+                </IconButton>
+                <Button
+                  onClick={leaveStream}
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#845695",
+                    "&:hover": {
+                      backgroundColor: "#6d477c",
+                    },
+                  }}
+                >
+                  Leave
+                </Button>
               </div>
             )}
+
+            {leftMeeting && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <Button onClick={handleRejoin} variant="contained" color="error">
+                  Rejoin Meeting
+                </Button>
+                <Button onClick={handleRejoin} variant="contained" color="success">
+                  Go to Lobby
+                </Button>
+              </div>
+            )}
+
           </section>
 
 

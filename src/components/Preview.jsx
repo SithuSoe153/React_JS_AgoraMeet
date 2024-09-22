@@ -2,7 +2,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import Button from "@mui/material/Button";
-import "../styles/preview.css"; // Create a new CSS file for the preview component
+import IconButton from "@mui/material/IconButton";
+import MicIcon from "@mui/icons-material/Mic";
+import MicOffIcon from "@mui/icons-material/MicOff";
+import VideocamIcon from "@mui/icons-material/Videocam";
+import VideocamOffIcon from "@mui/icons-material/VideocamOff";
+import JoinMeetingIcon from "@mui/icons-material/VideoCall";
+import CancelIcon from "@mui/icons-material/Cancel";
+import "../styles/preview.css"; // Ensure the styles are defined for layout
 
 const Preview = ({ onJoin, onCancel, micOn, setMicOn, cameraOn, setCameraOn }) => {
     const localTracksRef = useRef({ micTrack: null, cameraTrack: null });
@@ -63,31 +70,53 @@ const Preview = ({ onJoin, onCancel, micOn, setMicOn, cameraOn, setCameraOn }) =
     };
 
     return (
-        <div className="preview-container">
-            <div id="preview-video" className="preview-video"></div>
-            <div className="controls">
-                <Button
-                    onClick={toggleMic}
-                    variant="contained"
-                    color={micOn ? "primary" : "secondary"}
-                >
-                    {micOn ? "Turn Off Mic" : "Turn On Mic"}
-                </Button>
-                <Button
-                    onClick={toggleCamera}
-                    variant="contained"
-                    color={cameraOn ? "primary" : "secondary"}
-                >
-                    {cameraOn ? "Turn Off Camera" : "Turn On Camera"}
-                </Button>
-                <Button onClick={onJoin} variant="contained" color="success">
-                    Join Meeting
-                </Button>
-                <Button onClick={handleCancel} variant="contained" color="error">
-                    Cancel
-                </Button>
+
+        < main id="room__lobby__container" >
+            <div id="form__container">
+                <div id="form__container__header">
+                    <p>👋 Ready To Join?</p>
+                </div>
+
+                <form id="lobby__form" style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContents: "center",
+                    padding: "20px",
+                }}>
+
+
+                    <div className="video__container" id="user-container-local" style={{ width: "500px", height: "300px" }}>
+                        <div className="video-player" id="preview-video"></div>
+                        <div className="video-name">You</div>
+                        <div className="placeholder" id="placeholder-local">Camera is Off</div>
+                    </div>
+
+
+                    <div className="controls">
+                        <IconButton onClick={toggleMic} color={micOn ? "primary" : "error"}>
+                            {micOn ? <MicIcon /> : <MicOffIcon />}
+                        </IconButton>
+                        <IconButton onClick={toggleCamera} color={cameraOn ? "primary" : "error"}>
+                            {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+                        </IconButton>
+                        <Button onClick={onJoin} variant="contained" startIcon={<JoinMeetingIcon />} sx={{
+                            backgroundColor: "#845695",
+                            "&:hover": {
+                                backgroundColor: "#6d477c",
+                            },
+                        }}>
+                            Join Meeting
+                        </Button>
+                        <Button onClick={handleCancel} variant="contained" color="error" startIcon={<CancelIcon />}>
+                            Cancel
+                        </Button>
+                    </div>
+
+
+                </form>
             </div>
-        </div>
+        </main >
     );
 };
 
