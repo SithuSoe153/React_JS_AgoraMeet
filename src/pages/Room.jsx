@@ -19,6 +19,10 @@ import { Button, IconButton } from "@mui/material";
 
 const Room = () => {
   const location = useLocation();
+  const displayName = sessionStorage.getItem("display_name") || "default_user";
+  const formattedUid = displayName.replace(/\s+/g, "_");
+
+
   const { prevMicOn, prevCameraOn } = location.state || {}; // Access the state passed from Lobby.jsx
 
   const [localTracks, setLocalTracks] = useState([]);
@@ -63,8 +67,7 @@ const Room = () => {
 
 
       // Join the RTC channel
-      // await client.current.join(rtcToken, channelName, null, uid);
-      await client.current.join("00619547e2b1603452688a040cc0a219aeaIAByBYKSHPFISmioGgNuSV0sB/fOrvmyje7qDvcE3PJ1+a0Tte8AAAAAIgAuyDnmI/jwZgQAAQCjAhZsAgCjAhZsAwCjAhZsBACjAhZs", channelName, null, uid);
+      await client.current.join(rtcToken, channelName, null, formattedUid);
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
@@ -118,7 +121,7 @@ const Room = () => {
 
       // Create audio track regardless of initial mic setting
       // audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
-      audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
 
       // Create video track based on camera setting
       videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
@@ -131,7 +134,7 @@ const Room = () => {
         const player = `
           <div class="video__container" id="user-container-local">
             <div class="video-player" id="user-local"></div>
-            <div class="video-name">You</div>
+            <div class="video-name">${displayName} (You)</div>
             <div class="placeholder" id="placeholder-local">Camera is Off</div>
           </div>`;
         document
@@ -149,9 +152,9 @@ const Room = () => {
       await client.current.publish(tracksToPublish);
 
       // Handle mic and camera states after publishing
-      // if (!micOn) {
-      //   await audioTrack.setMuted(true); // Mute audio instead of disabling
-      // }
+      if (!micOn) {
+        await audioTrack.setMuted(true); // Mute audio instead of disabling
+      }
 
       if (!cameraOn) {
         await videoTrack.setMuted(true); // Mute video instead of disabling
@@ -181,8 +184,7 @@ const Room = () => {
         let player = `
           <div class="video__container" id="user-container-${user.uid}">
             <div class="video-player" id="user-${user.uid}"></div>
-            <div class="video-name">User ${user.uid}</div>
-            <div class="placeholder" id="placeholder-${user.uid}"></div>
+            <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
           </div>`;
         document.getElementById("streams__container").insertAdjacentHTML("beforeend", player);
       }
@@ -247,18 +249,22 @@ const Room = () => {
   const toggleMic = async () => {
     try {
       if (localTracks[0]) {
-        const isMuted = localTracks[0].muted;
-        await localTracks[0].setMuted(!isMuted);
-        setMicOn(!isMuted);
-        setBothOff(!cameraOn && !isMuted); // Correctly update bothOff state
-        console.log(isMuted ? "Microphone unmuted." : "Microphone muted.");
+        // Check the current mute status of the microphone
+        const isCurrentlyMuted = localTracks[0].muted;
+
+        // Toggle the mute status
+        await localTracks[0].setMuted(!isCurrentlyMuted);
+
+        // Update the state to reflect the new mute status
+        setMicOn((prevMicOn) => !prevMicOn); // Use callback to ensure the state is updated correctly
+        setBothOff((prevBothOff) => !cameraOn && !isCurrentlyMuted); // Correctly update bothOff state
+
+        console.log(isCurrentlyMuted ? "Microphone unmuted." : "Microphone muted.");
       }
     } catch (error) {
       console.error("Error toggling microphone:", error);
     }
   };
-
-
 
 
   const toggleCamera = async () => {
@@ -471,7 +477,7 @@ const Room = () => {
                 <IconButton
                   onClick={toggleMic}
                   sx={{
-                    backgroundColor: micOn ? "#845695" : "#f0f0f0",
+                    backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
                     color: micOn ? "#fff" : "#000",
                     "&:hover": {
                       backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
@@ -479,7 +485,9 @@ const Room = () => {
                   }}
                 >
                   {micOn ? <MicIcon /> : <MicOffIcon />}
+                  {/* {micOn ? "True Unmute" : "False Mute"} */}
                 </IconButton>
+
                 <IconButton
                   onClick={toggleCamera}
                   sx={{
