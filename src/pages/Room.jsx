@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
 import { useLocation } from "react-router-dom";
@@ -21,6 +21,11 @@ const Room = () => {
   const location = useLocation();
   const displayName = sessionStorage.getItem("display_name") || "default_user";
   const formattedUid = displayName.replace(/\s+/g, "_");
+
+
+  const streamBoxRef = useRef(null); // Stream container reference
+  const videoContainerRef = useRef(null); // Video container reference
+  const userIdInDisplayFrame = useRef(null); // Reference to store the current user in display frame
 
 
   const { prevMicOn, prevCameraOn } = location.state || {}; // Access the state passed from Lobby.jsx
@@ -172,6 +177,48 @@ const Room = () => {
     }
   };
 
+  const expandVideoFrame = (e) => {
+    const displayFrame = streamBoxRef.current;
+    const videoFrames = document.getElementsByClassName("video__container");
+    const clickedElement = e.currentTarget;
+
+    // Check if the clicked element is already in the display frame
+    if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
+      // Reset the display frame and resize all videos back to normal
+      displayFrame.style.display = "none";
+
+      // Move the clicked element back to its original position
+      const originalContainer = document.getElementById("streams__container");
+      if (clickedElement) {
+        originalContainer.appendChild(clickedElement);
+      }
+
+      // Reset dimensions for all videos
+      for (let i = 0; i < videoFrames.length; i++) {
+        videoFrames[i].style.height = ""; // Reset height
+        videoFrames[i].style.width = ""; // Reset width
+      }
+    } else {
+      // Remove any current video in display frame
+      if (displayFrame.firstChild) {
+        document.getElementById("streams__container").appendChild(displayFrame.firstChild);
+      }
+
+      // Display the clicked video in full-screen
+      displayFrame.style.display = "block";
+      displayFrame.appendChild(clickedElement);
+      userIdInDisplayFrame.current = clickedElement.id;
+
+      // Resize other videos to small size
+      for (let i = 0; i < videoFrames.length; i++) {
+        if (videoFrames[i].id !== userIdInDisplayFrame.current) {
+          videoFrames[i].style.height = "100px";
+          videoFrames[i].style.width = "100px";
+        }
+      }
+    }
+  };
+
 
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
@@ -180,13 +227,20 @@ const Room = () => {
 
       // Create the user container if it doesn't exist
       let playerContainer = document.getElementById(`user-container-${user.uid}`);
+
       if (!playerContainer) {
-        let player = `
-          <div class="video__container" id="user-container-${user.uid}">
-            <div class="video-player" id="user-${user.uid}"></div>
-            <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
-          </div>`;
-        document.getElementById("streams__container").insertAdjacentHTML("beforeend", player);
+        const player = document.createElement("div");
+        player.className = "video__container";
+        player.id = `user-container-${user.uid}`;
+        player.onclick = expandVideoFrame; // Assign the click handler
+
+        player.innerHTML = `
+          <div class="video-player" id="user-${user.uid}"></div>
+          <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
+          <div class="placeholder" id="placeholder-${user.uid}" style="display: none;"></div>
+        `;
+
+        document.getElementById("streams__container").appendChild(player);
       }
 
       const placeholder = document.getElementById(`placeholder-${user.uid}`);
@@ -194,48 +248,30 @@ const Room = () => {
       const hasAudioTrack = user.audioTrack && mediaType === "audio";
 
       // Manage placeholder visibility based on video track
-
-      if (hasAudioTrack && hasVideoTrack) {
-        placeholder.style.display = "none";
-      }
-
       if (!hasAudioTrack && !hasVideoTrack) {
-        if (placeholder) {
-          placeholder.style.display = "block"; // Show placeholder if video is off
-          placeholder.innerText = "Camera and Mic are Off"; // Indicate video is off
-        }
-      }
-
-      if (hasVideoTrack && !hasAudioTrack) {
-        user.videoTrack.play(`user-${user.uid}`);
-        if (placeholder) placeholder.style.display = "none"; // Hide placeholder if video is available
+        placeholder.style.display = "none";
       } else {
-        if (placeholder) {
-          placeholder.style.display = "block"; // Show placeholder if video is off
-          placeholder.innerText = "Camera is Off"; // Indicate video is off
+        if (!hasAudioTrack && !hasVideoTrack) {
+          if (placeholder) {
+            placeholder.style.display = "block";
+            placeholder.innerText = "Camera and Mic are Off";
+            alert(`User ${user.uid} has joined with Camera and Mic OFF!`);
+          }
+        }
+
+        if (hasVideoTrack && !hasAudioTrack) {
+          user.videoTrack.play(`user-${user.uid}`);
+          if (placeholder) placeholder.style.display = "none";
         }
       }
 
-      // Always play audio if available
       if (hasAudioTrack) {
         user.audioTrack.play();
-      }
-
-      // Handle the scenario where a user joins with no mic and camera
-      if (!user.audioTrack && !user.videoTrack) {
-        const container = document.getElementById(`user-container-${user.uid}`);
-        if (container) {
-          container.style.display = "block"; // Ensure the container is visible
-          placeholder.style.display = "block"; // Show placeholder
-          placeholder.innerText = "Camera and Mic are Off"; // Indicate both are off
-        }
       }
     } catch (error) {
       console.error(`Error handling user published: ${error}`);
     }
   };
-
-
 
   const handleUserLeft = (user) => {
     delete remoteUsers[user.uid];
@@ -467,7 +503,8 @@ const Room = () => {
           </section>
 
           <section id="stream__container">
-            <div id="stream__box"></div>
+            <div id="stream__box" ref={streamBoxRef}></div>
+            {/* <div id="stream__box" onClick={myFunction()}></div> */}
             <div id="streams__container"></div>
 
             {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
