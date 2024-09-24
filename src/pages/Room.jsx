@@ -3,6 +3,9 @@ import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
 import { useLocation } from "react-router-dom";
 
+import { styled, useTheme } from '@mui/material/styles';
+
+
 // Buttons
 
 
@@ -17,9 +20,13 @@ import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import MenuIcon from '@mui/icons-material/Menu';
+
 
 import "../styles/room.css";
-import { Box, Button, Drawer, IconButton, styled, Typography, Divider, useTheme } from "@mui/material";
+import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu } from "@mui/material";
+import MuiAppBar from '@mui/material/AppBar';
+
 
 const Room = () => {
   const location = useLocation();
@@ -54,7 +61,16 @@ const Room = () => {
   const [leftMeeting, setLeftMeeting] = useState(false); // New state for tracking if user left
 
   const [fullscreen, setFullscreen] = React.useState(false);
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(false);
+
+  const handleDrawerOpen = () => {
+    setOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setOpen(false);
+  };
+
 
   const drawerWidth = 400;
 
@@ -67,29 +83,29 @@ const Room = () => {
   const APP_ID = "19547e2b1603452688a040cc0a219aea";
 
 
-
   const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
     ({ theme, open }) => ({
       flexGrow: 1,
       padding: theme.spacing(3),
       transition: theme.transitions.create('margin', {
-        easing: theme.transitions.easing.sharp,
-        duration: theme.transitions.duration.leavingScreen,
-      }),
-      marginRight: open ? 0 : -drawerWidth, // Adjust margin when the drawer is open
-      transition: theme.transitions.create('margin', {
         easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
         duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
       }),
-    }),
+      marginRight: open ? 0 : -drawerWidth,
+      position: 'relative',
+    })
   );
 
-
-  const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
-  };
-
-
+  const AppBar = styled(MuiAppBar, {
+    shouldForwardProp: (prop) => prop !== 'open',
+  })(({ theme, open }) => ({
+    transition: theme.transitions.create(['margin', 'width'], {
+      easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
+      duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
+    }),
+    width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
+    marginRight: open ? drawerWidth : 0,
+  }));
 
   const DrawerHeader = styled('div')(({ theme }) => ({
     display: 'flex',
@@ -99,6 +115,9 @@ const Room = () => {
     justifyContent: 'flex-start',
   }));
 
+  const toggleDrawer = () => {
+    setOpen(!open);
+  };
 
 
 
@@ -484,226 +503,266 @@ const Room = () => {
 
 
   return (
-    <div>
-      <header id="nav">
-        <div className="nav--list">
-          <button id="members__button">
-            <svg
-              width="24"
-              height="24"
-              xmlns="http://www.w3.org/2000/svg"
-              fillRule="evenodd"
-              clipRule="evenodd"
-            >
-              {/* <path d="M24 18v1h-24v-1h24zm0-6v1h-24v-1h24zm0-6v1h-24v-1h24z" fill="#ede0e0"> */}
-              <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-            </svg>
-          </button>
-          <a href="lobby.html">
-            <h3 id="logo">
-              {/* <!-- <img src="./images/logo.png" alt="Site Logo"> --> */}
-              <span>Meet.MyDay</span>
-            </h3>
-          </a>
-        </div>
 
-        <div id="nav__links">
-          <button id="chat__button">
-            <svg
-              width="24"
-              height="24"
-              xmlns="http://www.w3.org/2000/svg"
-              fillRule="evenodd"
-              fill="#ede0e0"
-              clipRule="evenodd"
-            >
-              <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-            </svg>
-          </button>
-          <a className="nav__link" id="copy__link__btn">
-            Copy Share Link
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              fill="#ede0e0"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
-            </svg>
-          </a>
-        </div>
-      </header>
-
-      <Main open={drawerOpen}>
-
-        <main className="container">
-          <div id="room__container">
-
-
-            <section id="stream__container">
-              <div id="stream__box" ref={streamBoxRef}></div>
-              {/* <div id="stream__box" onClick={myFunction()}></div> */}
-              <div id="streams__container"></div>
-
-              {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
-
-              {joined && (
-                <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-
-                  <IconButton onClick={toggleDrawer}>
-                    {/* Icon for Participants */}
-                    <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-                    </svg>
-                  </IconButton>
-
-                  <IconButton
-                    onClick={toggleMic}
-                    sx={{
-                      backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
-                      color: micOn ? "#fff" : "#000",
-                      "&:hover": {
-                        backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
-                      },
-                    }}
-                  >
-                    {micOn ? <MicIcon /> : <MicOffIcon />}
-                    {/* {micOn ? "True Unmute" : "False Mute"} */}
-                  </IconButton>
-
-                  <IconButton
-                    onClick={toggleCamera}
-                    sx={{
-                      backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
-                      color: cameraOn ? "#fff" : "#000",
-                      "&:hover": {
-                        backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
-                      },
-                    }}
-                  >
-                    {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
-                  </IconButton>
-                  <IconButton
-                    onClick={toggleScreen}
-                    sx={{
-                      backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
-                      color: sharingScreen ? "#fff" : "#000",
-                      "&:hover": {
-                        backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
-                      },
-                    }}
-                  >
-                    {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
-                  </IconButton>
-                  <IconButton
-                    // onClick={startRecording}
-                    sx={{
-                      backgroundColor: "#845695",
-                      color: "#fff",
-                      "&:hover": {
-                        backgroundColor: "#6d477c",
-                      },
-                    }}
-                  >
-                    <RecordVoiceOverIcon />
-                  </IconButton>
-                  <Button
-                    onClick={leaveStream}
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "#845695",
-                      "&:hover": {
-                        backgroundColor: "#6d477c",
-                      },
-                    }}
-                  >
-                    Leave
-                  </Button>
-                </div>
-              )}
-
-
-              {/* Persistent Drawer for Participants and Chat Messages */}
-              <Drawer
-                sx={{
-                  width: drawerWidth,
-                  flexShrink: 0,
-                  '& .MuiDrawer-paper': {
-                    width: drawerWidth,
-                  },
-                }}
-                variant="persistent"
-                anchor="right"
-                open={drawerOpen}  // Updated to use drawerOpen state
-              >
-                {/* <DrawerHeader>
-                <IconButton onClick={toggleDrawer}>
-                  {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-                </IconButton>
-              </DrawerHeader> */}
-                {/* <Divider /> */}
-                {/* Add any content you want inside the drawer */}
-                <Box sx={{ marginTop: "70px" }}>
-                  <section id="messages__container">
-
-                    <div id="messages">
-                      <div class="message__wrapper">
-                        <div class="message__body">
-                          <strong class="message__author">Sithu Soe</strong>
-                          <p class="message__text">Hii Helloi</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <form id="message__form">
-                      <input
-                        type="text"
-                        name="message"
-                        placeholder="Send a message...."
-                      />
-                    </form>
-                  </section>
-                </Box>
-              </Drawer>
-
-
-
-              {/* Control buttons for participants and chat messages */}
-              <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
-                <IconButton onClick={toggleDrawer}>
-                  {/* Icon for Participants */}
-                  <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-                  </svg>
-                </IconButton>
-                <IconButton onClick={toggleDrawer}>
-                  {/* Icon for Chat Messages */}
-                  <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-                  </svg>
-                </IconButton>
-              </div>
-
-              {leftMeeting && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                  <Button onClick={handleRejoin} variant="contained" color="error">
-                    Rejoin Meeting
-                  </Button>
-                  <Button onClick={handleRejoin} variant="contained" color="success">
-                    Go to Lobby
-                  </Button>
-                </div>
-              )}
-
-            </section>
-
-
-          </div>
-        </main>
+    <Box sx={{ display: 'flex' }}>
+      <CssBaseline />
+      <AppBar position="fixed" open={open}>
+        <Toolbar>
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }} component="div">
+            Persistent drawer
+          </Typography>
+          <IconButton color="inherit" aria-label="open drawer" edge="end" onClick={toggleDrawer}>
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <Main open={open}>
+        <DrawerHeader />
+        <Typography>
+          Your content goes here...
+        </Typography>
       </Main>
+      <Drawer
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+          },
+        }}
+        variant="persistent"
+        anchor="right"
+        open={open}
+      >
+        <DrawerHeader>
+          <IconButton onClick={toggleDrawer}>
+            {open ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </IconButton>
+        </DrawerHeader>
+        <Divider />
+      </Drawer>
+    </Box>
 
-    </div>
+    // <div>
+    //   <header id="nav">
+    //     <div className="nav--list">
+    //       <button id="members__button">
+    //         <svg
+    //           width="24"
+    //           height="24"
+    //           xmlns="http://www.w3.org/2000/svg"
+    //           fillRule="evenodd"
+    //           clipRule="evenodd"
+    //         >
+    //           {/* <path d="M24 18v1h-24v-1h24zm0-6v1h-24v-1h24zm0-6v1h-24v-1h24z" fill="#ede0e0"> */}
+    //           <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+    //         </svg>
+    //       </button>
+    //       <a href="lobby.html">
+    //         <h3 id="logo">
+    //           {/* <!-- <img src="./images/logo.png" alt="Site Logo"> --> */}
+    //           <span>Meet.MyDay</span>
+    //         </h3>
+    //       </a>
+    //     </div>
+
+    //     <div id="nav__links">
+    //       <button id="chat__button">
+    //         <svg
+    //           width="24"
+    //           height="24"
+    //           xmlns="http://www.w3.org/2000/svg"
+    //           fillRule="evenodd"
+    //           fill="#ede0e0"
+    //           clipRule="evenodd"
+    //         >
+    //           <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+    //         </svg>
+    //       </button>
+    //       <a className="nav__link" id="copy__link__btn">
+    //         Copy Share Link
+    //         <svg
+    //           xmlns="http://www.w3.org/2000/svg"
+    //           width="24"
+    //           height="24"
+    //           fill="#ede0e0"
+    //           viewBox="0 0 24 24"
+    //         >
+    //           <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
+    //         </svg>
+    //       </a>
+    //     </div>
+    //   </header>
+
+    //   <Main open={drawerOpen}>
+
+    //     <main className="container">
+    //       <div id="room__container">
+
+
+    //         <section id="stream__container">
+    //           <div id="stream__box" ref={streamBoxRef}></div>
+    //           {/* <div id="stream__box" onClick={myFunction()}></div> */}
+    //           <div id="streams__container"></div>
+
+    //           {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
+
+    //           {joined && (
+    //             <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+
+    //               <IconButton onClick={toggleDrawer}>
+    //                 {/* Icon for Participants */}
+    //                 <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+    //                   <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+    //                 </svg>
+    //               </IconButton>
+
+    //               <IconButton
+    //                 onClick={toggleMic}
+    //                 sx={{
+    //                   backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
+    //                   color: micOn ? "#fff" : "#000",
+    //                   "&:hover": {
+    //                     backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
+    //                   },
+    //                 }}
+    //               >
+    //                 {micOn ? <MicIcon /> : <MicOffIcon />}
+    //                 {/* {micOn ? "True Unmute" : "False Mute"} */}
+    //               </IconButton>
+
+    //               <IconButton
+    //                 onClick={toggleCamera}
+    //                 sx={{
+    //                   backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
+    //                   color: cameraOn ? "#fff" : "#000",
+    //                   "&:hover": {
+    //                     backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
+    //                   },
+    //                 }}
+    //               >
+    //                 {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+    //               </IconButton>
+    //               <IconButton
+    //                 onClick={toggleScreen}
+    //                 sx={{
+    //                   backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
+    //                   color: sharingScreen ? "#fff" : "#000",
+    //                   "&:hover": {
+    //                     backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
+    //                   },
+    //                 }}
+    //               >
+    //                 {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+    //               </IconButton>
+    //               <IconButton
+    //                 // onClick={startRecording}
+    //                 sx={{
+    //                   backgroundColor: "#845695",
+    //                   color: "#fff",
+    //                   "&:hover": {
+    //                     backgroundColor: "#6d477c",
+    //                   },
+    //                 }}
+    //               >
+    //                 <RecordVoiceOverIcon />
+    //               </IconButton>
+    //               <Button
+    //                 onClick={leaveStream}
+    //                 variant="contained"
+    //                 sx={{
+    //                   backgroundColor: "#845695",
+    //                   "&:hover": {
+    //                     backgroundColor: "#6d477c",
+    //                   },
+    //                 }}
+    //               >
+    //                 Leave
+    //               </Button>
+    //             </div>
+    //           )}
+
+
+    //           {/* Persistent Drawer for Participants and Chat Messages */}
+    //           <Drawer
+    //             sx={{
+    //               width: drawerWidth,
+    //               flexShrink: 0,
+    //               '& .MuiDrawer-paper': {
+    //                 width: drawerWidth,
+    //               },
+    //             }}
+    //             variant="persistent"
+    //             anchor="right"
+    //             open={drawerOpen}  // Updated to use drawerOpen state
+    //           >
+    //             {/* <DrawerHeader>
+    //             <IconButton onClick={toggleDrawer}>
+    //               {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+    //             </IconButton>
+    //           </DrawerHeader> */}
+    //             {/* <Divider /> */}
+    //             {/* Add any content you want inside the drawer */}
+    //             <Box sx={{ marginTop: "70px" }}>
+    //               <section id="messages__container">
+
+    //                 <div id="messages">
+    //                   <div class="message__wrapper">
+    //                     <div class="message__body">
+    //                       <strong class="message__author">Sithu Soe</strong>
+    //                       <p class="message__text">Hii Helloi</p>
+    //                     </div>
+    //                   </div>
+    //                 </div>
+
+    //                 <form id="message__form">
+    //                   <input
+    //                     type="text"
+    //                     name="message"
+    //                     placeholder="Send a message...."
+    //                   />
+    //                 </form>
+    //               </section>
+    //             </Box>
+    //           </Drawer>
+
+
+
+    //           {/* Control buttons for participants and chat messages */}
+    //           <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
+    //             <IconButton onClick={toggleDrawer}>
+    //               {/* Icon for Participants */}
+    //               <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+    //                 <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+    //               </svg>
+    //             </IconButton>
+    //             <IconButton onClick={toggleDrawer}>
+    //               {/* Icon for Chat Messages */}
+    //               <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+    //                 <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+    //               </svg>
+    //             </IconButton>
+    //           </div>
+
+    //           {leftMeeting && (
+    //             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+    //               <Button onClick={handleRejoin} variant="contained" color="error">
+    //                 Rejoin Meeting
+    //               </Button>
+    //               <Button onClick={handleRejoin} variant="contained" color="success">
+    //                 Go to Lobby
+    //               </Button>
+    //             </div>
+    //           )}
+
+    //         </section>
+
+
+    //       </div>
+    //     </main>
+    //   </Main>
+
+    // </div>
   );
 };
 
