@@ -149,6 +149,7 @@
 
 .message__text {
   margin: 0;
+  color: #ffffff;
 }
 
 #message__form {
@@ -181,7 +182,8 @@
 
 #stream__container {
   justify-self: center;
-  width: calc(100% - 40.7rem);
+  /* width: calc(100% - 40.7rem); */
+  /* width: 100%; */
   position: fixed;
   left: 15.7rem;
   top: clac(100vh - 72px);

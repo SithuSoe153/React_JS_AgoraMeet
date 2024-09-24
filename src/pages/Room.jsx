@@ -5,20 +5,25 @@ import { useLocation } from "react-router-dom";
 
 // Buttons
 
-import MicIcon from "@mui/icons-material/Mic";
-import MicOffIcon from "@mui/icons-material/MicOff";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
-import ScreenShareIcon from "@mui/icons-material/ScreenShare";
-import StopScreenShareIcon from "@mui/icons-material/StopScreenShare";
-import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import ScreenShareIcon from '@mui/icons-material/ScreenShare';
+import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
+import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 import "../styles/room.css";
-import { Button, IconButton } from "@mui/material";
+import { Box, Button, Drawer, IconButton, styled, Typography, Divider, useTheme } from "@mui/material";
 
 const Room = () => {
   const location = useLocation();
+  const theme = useTheme();
   const displayName = sessionStorage.getItem("display_name") || "default_user";
   const formattedUid = displayName.replace(/\s+/g, "_");
 
@@ -48,6 +53,10 @@ const Room = () => {
 
   const [leftMeeting, setLeftMeeting] = useState(false); // New state for tracking if user left
 
+  const [fullscreen, setFullscreen] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(true);
+
+  const drawerWidth = 400;
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -56,6 +65,41 @@ const Room = () => {
   const rtmClient = useRef(null);
   const channel = useRef(null);
   const APP_ID = "19547e2b1603452688a040cc0a219aea";
+
+
+
+  const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
+    ({ theme, open }) => ({
+      flexGrow: 1,
+      padding: theme.spacing(3),
+      transition: theme.transitions.create('margin', {
+        easing: theme.transitions.easing.sharp,
+        duration: theme.transitions.duration.leavingScreen,
+      }),
+      marginRight: open ? 0 : -drawerWidth, // Adjust margin when the drawer is open
+      transition: theme.transitions.create('margin', {
+        easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
+        duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
+      }),
+    }),
+  );
+
+
+  const toggleDrawer = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+
+
+
+  const DrawerHeader = styled('div')(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    padding: theme.spacing(0, 1),
+    ...theme.mixins.toolbar,
+    justifyContent: 'flex-start',
+  }));
+
+
 
 
   useEffect(() => {
@@ -72,7 +116,7 @@ const Room = () => {
 
 
       // Join the RTC channel
-      await client.current.join(rtcToken, channelName, null, formattedUid);
+      await client.current.join("00619547e2b1603452688a040cc0a219aeaIADIBQa7j1uJhzD5J1vX9a3nbTR4eOgfPQt/D9Tzmd0ZJa0Tte8AAAAAIgCWv52hdIzzZgQAAQD0lhhsAgD0lhhsAwD0lhhsBAD0lhhs", channelName, null, formattedUid);
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
@@ -491,119 +535,174 @@ const Room = () => {
         </div>
       </header>
 
-      <main className="container">
-        <div id="room__container">
-          <section id="members__container">
-            <div id="members__header">
-              <p>Participants</p>
-              <strong id="members__count">0</strong>
-            </div>
+      <Main open={drawerOpen}>
 
-            <div id="member__list"></div>
-          </section>
+        <main className="container">
+          <div id="room__container">
 
-          <section id="stream__container">
-            <div id="stream__box" ref={streamBoxRef}></div>
-            {/* <div id="stream__box" onClick={myFunction()}></div> */}
-            <div id="streams__container"></div>
 
-            {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
+            <section id="stream__container">
+              <div id="stream__box" ref={streamBoxRef}></div>
+              {/* <div id="stream__box" onClick={myFunction()}></div> */}
+              <div id="streams__container"></div>
 
-            {joined && (
-              <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-                <IconButton
-                  onClick={toggleMic}
-                  sx={{
-                    backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
-                    color: micOn ? "#fff" : "#000",
-                    "&:hover": {
-                      backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
-                    },
-                  }}
-                >
-                  {micOn ? <MicIcon /> : <MicOffIcon />}
-                  {/* {micOn ? "True Unmute" : "False Mute"} */}
+              {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
+
+              {joined && (
+                <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+
+                  <IconButton onClick={toggleDrawer}>
+                    {/* Icon for Participants */}
+                    <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+                    </svg>
+                  </IconButton>
+
+                  <IconButton
+                    onClick={toggleMic}
+                    sx={{
+                      backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
+                      color: micOn ? "#fff" : "#000",
+                      "&:hover": {
+                        backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    {micOn ? <MicIcon /> : <MicOffIcon />}
+                    {/* {micOn ? "True Unmute" : "False Mute"} */}
+                  </IconButton>
+
+                  <IconButton
+                    onClick={toggleCamera}
+                    sx={{
+                      backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
+                      color: cameraOn ? "#fff" : "#000",
+                      "&:hover": {
+                        backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+                  </IconButton>
+                  <IconButton
+                    onClick={toggleScreen}
+                    sx={{
+                      backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
+                      color: sharingScreen ? "#fff" : "#000",
+                      "&:hover": {
+                        backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+                  </IconButton>
+                  <IconButton
+                    // onClick={startRecording}
+                    sx={{
+                      backgroundColor: "#845695",
+                      color: "#fff",
+                      "&:hover": {
+                        backgroundColor: "#6d477c",
+                      },
+                    }}
+                  >
+                    <RecordVoiceOverIcon />
+                  </IconButton>
+                  <Button
+                    onClick={leaveStream}
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "#845695",
+                      "&:hover": {
+                        backgroundColor: "#6d477c",
+                      },
+                    }}
+                  >
+                    Leave
+                  </Button>
+                </div>
+              )}
+
+
+              {/* Persistent Drawer for Participants and Chat Messages */}
+              <Drawer
+                sx={{
+                  width: drawerWidth,
+                  flexShrink: 0,
+                  '& .MuiDrawer-paper': {
+                    width: drawerWidth,
+                  },
+                }}
+                variant="persistent"
+                anchor="right"
+                open={drawerOpen}  // Updated to use drawerOpen state
+              >
+                {/* <DrawerHeader>
+                <IconButton onClick={toggleDrawer}>
+                  {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
                 </IconButton>
+              </DrawerHeader> */}
+                {/* <Divider /> */}
+                {/* Add any content you want inside the drawer */}
+                <Box sx={{ marginTop: "70px" }}>
+                  <section id="messages__container">
 
-                <IconButton
-                  onClick={toggleCamera}
-                  sx={{
-                    backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
-                    color: cameraOn ? "#fff" : "#000",
-                    "&:hover": {
-                      backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
-                    },
-                  }}
-                >
-                  {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+                    <div id="messages">
+                      <div class="message__wrapper">
+                        <div class="message__body">
+                          <strong class="message__author">Sithu Soe</strong>
+                          <p class="message__text">Hii Helloi</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <form id="message__form">
+                      <input
+                        type="text"
+                        name="message"
+                        placeholder="Send a message...."
+                      />
+                    </form>
+                  </section>
+                </Box>
+              </Drawer>
+
+
+
+              {/* Control buttons for participants and chat messages */}
+              <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
+                <IconButton onClick={toggleDrawer}>
+                  {/* Icon for Participants */}
+                  <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+                  </svg>
                 </IconButton>
-                <IconButton
-                  onClick={toggleScreen}
-                  sx={{
-                    backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
-                    color: sharingScreen ? "#fff" : "#000",
-                    "&:hover": {
-                      backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
-                    },
-                  }}
-                >
-                  {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+                <IconButton onClick={toggleDrawer}>
+                  {/* Icon for Chat Messages */}
+                  <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+                  </svg>
                 </IconButton>
-                <IconButton
-                  // onClick={startRecording}
-                  sx={{
-                    backgroundColor: "#845695",
-                    color: "#fff",
-                    "&:hover": {
-                      backgroundColor: "#6d477c",
-                    },
-                  }}
-                >
-                  <RecordVoiceOverIcon />
-                </IconButton>
-                <Button
-                  onClick={leaveStream}
-                  variant="contained"
-                  sx={{
-                    backgroundColor: "#845695",
-                    "&:hover": {
-                      backgroundColor: "#6d477c",
-                    },
-                  }}
-                >
-                  Leave
-                </Button>
               </div>
-            )}
 
-            {leftMeeting && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <Button onClick={handleRejoin} variant="contained" color="error">
-                  Rejoin Meeting
-                </Button>
-                <Button onClick={handleRejoin} variant="contained" color="success">
-                  Go to Lobby
-                </Button>
-              </div>
-            )}
+              {leftMeeting && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                  <Button onClick={handleRejoin} variant="contained" color="error">
+                    Rejoin Meeting
+                  </Button>
+                  <Button onClick={handleRejoin} variant="contained" color="success">
+                    Go to Lobby
+                  </Button>
+                </div>
+              )}
 
-          </section>
-
+            </section>
 
 
-          <section id="messages__container">
-            <div id="messages"></div>
+          </div>
+        </main>
+      </Main>
 
-            <form id="message__form">
-              <input
-                type="text"
-                name="message"
-                placeholder="Send a message...."
-              />
-            </form>
-          </section>{" "}
-        </div>
-      </main>
     </div>
   );
 };
