@@ -275,6 +275,7 @@ const Room = () => {
     }
   };
 
+
   const expandVideoFrame = (e) => {
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
@@ -284,6 +285,12 @@ const Room = () => {
     if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
       // Reset the display frame and resize all videos back to normal
       displayFrame.style.display = "none";
+      displayFrame.style.position = ""; // Reset position
+      displayFrame.style.top = ""; // Reset top
+      displayFrame.style.left = ""; // Reset left
+      displayFrame.style.width = ""; // Reset width
+      displayFrame.style.height = ""; // Reset height
+      displayFrame.style.zIndex = ""; // Reset zIndex
 
       // Move the clicked element back to its original position
       const originalContainer = document.getElementById("streams__container");
@@ -306,6 +313,18 @@ const Room = () => {
       displayFrame.style.display = "block";
       displayFrame.appendChild(clickedElement);
       userIdInDisplayFrame.current = clickedElement.id;
+
+      // Set the displayFrame to full-screen dimensions
+      displayFrame.style.position = "fixed"; // Fix it on the screen
+      displayFrame.style.top = "0"; // Position it at the top
+      displayFrame.style.left = "0"; // Position it on the left
+      displayFrame.style.width = "100vw"; // Full viewport width
+      displayFrame.style.height = "100vh"; // Full viewport height
+      displayFrame.style.zIndex = "999"; // Bring it on top of other elements
+
+      // Set the clicked video element to occupy the full display frame
+      clickedElement.style.width = "100%";
+      clickedElement.style.height = "100%";
 
       // Resize other videos to small size
       for (let i = 0; i < videoFrames.length; i++) {
@@ -405,9 +424,6 @@ const Room = () => {
     }
   };
 
-
-
-
   const toggleCamera = async () => {
     try {
       if (!cameraOn) {
@@ -416,9 +432,6 @@ const Room = () => {
           // If the track was closed or not initialized, create a new camera video track
           localTracks[1] = await AgoraRTC.createCameraVideoTrack();
           setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
-        } else {
-          // If the track exists, simply unmute it
-          await localTracks[1].setMuted(false);
         }
 
         await client.current.publish([localTracks[1]]); // Publish the video track
@@ -432,9 +445,12 @@ const Room = () => {
         console.log("Camera turned on.");
       } else {
         // Camera is on, so we turn it off
-        localTracks[1].stop(); // Stop sending video frames, turns off the camera
-
-        await client.current.unpublish([localTracks[1]]); // Unpublish the video track
+        if (localTracks[1]) {
+          localTracks[1].stop(); // Stop sending video frames, turns off the camera
+          await client.current.unpublish([localTracks[1]]); // Unpublish the video track
+          localTracks[1].close();  // Fully close the track and release the camera
+          localTracks[1] = null; // Set to null to ensure new track is created next time
+        }
 
         setCameraOn(false);
         setBothOff(!micOn && true);
@@ -445,10 +461,9 @@ const Room = () => {
         console.log("Camera turned off.");
       }
     } catch (error) {
-      console.error("Error toggling camera:", error);
+      console.error("Error toggling the camera: ", error);
     }
   };
-
 
 
 
