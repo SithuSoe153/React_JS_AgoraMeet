@@ -15,14 +15,14 @@
 
 .container {
   margin-top: 74px;
-  height: calc(100vh - 74px);
+  /* height: calc(100vh - 74px); */
   width: 100%;
   position: relative;
 }
 
 #room__container {
   position: relative;
-  display: flex;
+  /* display: flex; */
   gap: 3rem;
 }
 
@@ -183,9 +183,9 @@
 #stream__container {
   justify-self: center;
   /* width: calc(100% - 40.7rem); */
-  /* width: 100%; */
+  width: 100%;
   position: fixed;
-  left: 15.7rem;
+  /* left: 15.7rem; */
   top: clac(100vh - 72px);
   overflow-y: auto;
   height: 100%;
@@ -244,7 +244,7 @@
 
 /* .video-player video{
   border-radius: 50%;
-} */
+  } */
 
 @media (max-width: 1400px) {
   .video__container {
@@ -263,7 +263,8 @@
   }
 
   #stream__container {
-    width: calc(100% - 25rem);
+    /* width: calc(100% - 25rem); */
+    width: 100%;
     left: 0;
   }
 }
@@ -378,7 +379,7 @@
   /* Adjust as needed */
   height: 300px;
   /* Adjust as needed */
-  margin: 10px;
+  /* margin: 10px; */
   overflow: hidden;
   /* Ensure the text does not overflow outside the container */
   border-radius: 10px;

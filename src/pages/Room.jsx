@@ -21,11 +21,61 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuIcon from '@mui/icons-material/Menu';
-
+import RecordIcon from '@mui/icons-material/RadioButtonChecked';
+import ChatIcon from '@mui/icons-material/Chat';
+import ChatOffIcon from '@mui/icons-material/ChatBubble';
+import PeopleIcon from '@mui/icons-material/People';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import InfoIcon from "@mui/icons-material/Info";
 
 import "../styles/room.css";
+import GradientIconButton from "../components/Buttons/GradientIconButton"
 import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
+
+const drawerWidth = 400;
+
+const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
+  ({ theme, open }) => ({
+    flexGrow: 1,
+    padding: theme.spacing(3),
+    transition: theme.transitions.create(['margin', 'width'], {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.leavingScreen,
+    }),
+    // marginRight: open ? 0 : `-${drawerWidth}px`, // Use negative margin to move content
+    marginRight: open ? 0 : `-${drawerWidth}px`, // Use negative margin to move content
+    width: open ? `calc(100% - ${drawerWidth}px)` : '100%', // Adjust width
+    ...(open && {
+      transition: theme.transitions.create(['margin', 'width'], {
+        easing: theme.transitions.easing.easeOut,
+        duration: theme.transitions.duration.enteringScreen,
+      }),
+    }),
+  })
+);
+
+
+// const AppBar = styled(MuiAppBar, {
+//   shouldForwardProp: (prop) => prop !== 'open',
+// })(({ theme, open }) => ({
+//   transition: theme.transitions.create(['margin', 'width'], {
+//     easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
+//     duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
+//   }),
+//   width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
+//   marginRight: open ? `${drawerWidth}px` : 0,  // Adjust the AppBar's width and margin for right-side drawer
+// }));
+
+
+
+// const DrawerHeader = styled('div')(({ theme }) => ({
+//   display: 'flex',
+//   alignItems: 'center',
+//   padding: theme.spacing(0, 1),
+//   ...theme.mixins.toolbar,
+//   justifyContent: 'flex-start',
+// }));
 
 
 const Room = () => {
@@ -60,8 +110,8 @@ const Room = () => {
 
   const [leftMeeting, setLeftMeeting] = useState(false); // New state for tracking if user left
 
-  const [fullscreen, setFullscreen] = React.useState(false);
-  const [open, setOpen] = React.useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -72,7 +122,7 @@ const Room = () => {
   };
 
 
-  const drawerWidth = 400;
+  // const drawerWidth = 400;
 
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -83,37 +133,6 @@ const Room = () => {
   const APP_ID = "19547e2b1603452688a040cc0a219aea";
 
 
-  const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
-    ({ theme, open }) => ({
-      flexGrow: 1,
-      padding: theme.spacing(3),
-      transition: theme.transitions.create('margin', {
-        easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
-        duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
-      }),
-      marginRight: open ? 0 : -drawerWidth,
-      position: 'relative',
-    })
-  );
-
-  const AppBar = styled(MuiAppBar, {
-    shouldForwardProp: (prop) => prop !== 'open',
-  })(({ theme, open }) => ({
-    transition: theme.transitions.create(['margin', 'width'], {
-      easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
-      duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
-    }),
-    width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
-    marginRight: open ? drawerWidth : 0,
-  }));
-
-  const DrawerHeader = styled('div')(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    padding: theme.spacing(0, 1),
-    ...theme.mixins.toolbar,
-    justifyContent: 'flex-start',
-  }));
 
   const toggleDrawer = () => {
     setOpen(!open);
@@ -135,7 +154,7 @@ const Room = () => {
 
 
       // Join the RTC channel
-      await client.current.join("00619547e2b1603452688a040cc0a219aeaIADIBQa7j1uJhzD5J1vX9a3nbTR4eOgfPQt/D9Tzmd0ZJa0Tte8AAAAAIgCWv52hdIzzZgQAAQD0lhhsAgD0lhhsAwD0lhhsBAD0lhhs", channelName, null, formattedUid);
+      await client.current.join("00619547e2b1603452688a040cc0a219aeaIADN1BPLiK1pE0stbNbndlfSRoNuRxsh8oR2AZXNWaYlWa0Tte8AAAAAIgCIa0MSUW/6ZgQAAQDReR9sAgDReR9sAwDReR9sBADReR9s", channelName, null, formattedUid);
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
@@ -199,15 +218,31 @@ const Room = () => {
 
       // Create player container for local user
       if (!document.getElementById("user-container-local")) {
-        const player = `
-          <div class="video__container" id="user-container-local">
-            <div class="video-player" id="user-local"></div>
-            <div class="video-name">${displayName} (You)</div>
-            <div class="placeholder" id="placeholder-local">Camera is Off</div>
-          </div>`;
-        document
-          .getElementById("streams__container")
-          .insertAdjacentHTML("beforeend", player);
+        // const player = `
+        // <div class="video__container" id="user-container-local" onclick="expandVideoFrame()">
+        // <div class="video-player" id="user-local"></div>
+        // <div class="video-name">${displayName} (You)</div>
+        // <div class="placeholder" id="placeholder-local">Camera is Off</div>
+        // </div>`;
+        // document
+        // .getElementById("streams__container")
+        // .insertAdjacentHTML("beforeend", player);
+
+
+        const player = document.createElement("div");
+        player.className = "video__container";
+        player.id = `user-container-local`;
+        player.onclick = expandVideoFrame; // Assign the click handler
+
+        player.innerHTML = `
+ <div class="video-player" id="user-local"></div>
+ <div class="video-name">${displayName} (You)</div>
+ <div class="placeholder" id="placeholder-local">Camera is Off</div>
+ `;
+
+        document.getElementById("streams__container").appendChild(player);
+
+
       }
 
       const placeholder = document.getElementById("placeholder-local");
@@ -298,10 +333,10 @@ const Room = () => {
         player.onclick = expandVideoFrame; // Assign the click handler
 
         player.innerHTML = `
-          <div class="video-player" id="user-${user.uid}"></div>
-          <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
-          <div class="placeholder" id="placeholder-${user.uid}" style="display: none;"></div>
-        `;
+ <div class="video-player" id="user-${user.uid}"></div>
+ <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
+ <div class="placeholder" id="placeholder-${user.uid}" style="display: none;"></div>
+ `;
 
         document.getElementById("streams__container").appendChild(player);
       }
@@ -345,20 +380,25 @@ const Room = () => {
   };
 
 
+
   const toggleMic = async () => {
     try {
-      if (localTracks[0]) {
-        // Check the current mute status of the microphone
-        const isCurrentlyMuted = localTracks[0].muted;
-
-        // Toggle the mute status
-        await localTracks[0].setMuted(!isCurrentlyMuted);
-
-        // Update the state to reflect the new mute status
-        setMicOn((prevMicOn) => !prevMicOn); // Use callback to ensure the state is updated correctly
-        setBothOff((prevBothOff) => !cameraOn && !isCurrentlyMuted); // Correctly update bothOff state
-
-        console.log(isCurrentlyMuted ? "Microphone unmuted." : "Microphone muted.");
+      if (micOn) {
+        // If the mic is on, stop and remove the audio track
+        if (localTracks[0]) {
+          await localTracks[0].stop();
+          await localTracks[0].close();
+          setLocalTracks((prevTracks) => [null, prevTracks[1]]);
+        }
+        setMicOn(false);
+        console.log("Microphone disabled.");
+      } else {
+        // If the mic is off, create a new microphone audio track
+        const newAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        setLocalTracks((prevTracks) => [newAudioTrack, prevTracks[1]]);
+        await client.current.publish([newAudioTrack]);
+        setMicOn(true);
+        console.log("Microphone enabled.");
       }
     } catch (error) {
       console.error("Error toggling microphone:", error);
@@ -366,29 +406,42 @@ const Room = () => {
   };
 
 
+
+
   const toggleCamera = async () => {
     try {
-      if (!localTracks[1]) {
-        localTracks[1] = await AgoraRTC.createCameraVideoTrack({ muted: true });
-        setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
-      }
+      if (!cameraOn) {
+        // Camera is off, so we turn it on
+        if (!localTracks[1]) {
+          // If the track was closed or not initialized, create a new camera video track
+          localTracks[1] = await AgoraRTC.createCameraVideoTrack();
+          setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
+        } else {
+          // If the track exists, simply unmute it
+          await localTracks[1].setMuted(false);
+        }
 
-      const isMuted = localTracks[1].muted;
-      if (isMuted) {
-        await localTracks[1].setMuted(false);
-        localTracks[1].play("user-local");
+        await client.current.publish([localTracks[1]]); // Publish the video track
+        localTracks[1].play("user-local"); // Play the local video
+
         const placeholder = document.getElementById("placeholder-local");
         if (placeholder) placeholder.style.display = "none";
+
         setCameraOn(true);
-        setBothOff(!micOn && false); // Update bothOff state correctly
+        setBothOff(!micOn && false);
         console.log("Camera turned on.");
       } else {
-        await localTracks[1].setMuted(true);
-        localTracks[1].stop();
+        // Camera is on, so we turn it off
+        localTracks[1].stop(); // Stop sending video frames, turns off the camera
+
+        await client.current.unpublish([localTracks[1]]); // Unpublish the video track
+
+        setCameraOn(false);
+        setBothOff(!micOn && true);
+
         const placeholder = document.getElementById("placeholder-local");
         if (placeholder) placeholder.style.display = "block";
-        setCameraOn(false);
-        setBothOff(!micOn && !cameraOn); // Update bothOff state correctly
+
         console.log("Camera turned off.");
       }
     } catch (error) {
@@ -404,18 +457,17 @@ const Room = () => {
       try {
         // Create screen track for sharing
         const screenTracks = await AgoraRTC.createScreenVideoTrack();
-        setLocalTracks((prevTracks) => {
-          // Stop the current camera track before switching
-          if (prevTracks[1]) {
-            prevTracks[1].stop();
-            prevTracks[1].close();
-          }
-          return [prevTracks[0], screenTracks];
-        });
 
-        // Unpublish the camera track and publish the screen track
-        await client.current.unpublish(localTracks[1]);
+        // Unpublish the current camera track before switching
+        if (localTracks[1]) {
+          await client.current.unpublish([localTracks[1]]);
+          localTracks[1].stop();
+          localTracks[1].close();
+        }
+
+        // Publish the screen track
         await client.current.publish([screenTracks]);
+        setLocalTracks((prevTracks) => [prevTracks[0], screenTracks]);
         setSharingScreen(true);
 
         // Display screen share in the local container
@@ -428,6 +480,7 @@ const Room = () => {
           document.getElementById("streams__container").insertAdjacentHTML("beforeend", screenPlayer);
         }
         screenTracks.play("user-local");
+
       } catch (error) {
         console.error("Error starting screen share:", error);
       }
@@ -451,6 +504,8 @@ const Room = () => {
       }
     }
   };
+
+
 
   const handleRejoin = () => {
     // Logic for rejoining the stream
@@ -490,9 +545,9 @@ const Room = () => {
 
   const switchToCamera = async () => {
     const player = `
-      <div className="video__container" id="user-container-${uid.current}">
-        <div className="video-player" id="user-${uid.current}"></div>
-      </div>`;
+ <div className="video__container" id="user-container-${uid.current}">
+ <div className="video-player" id="user-${uid.current}"></div>
+ </div>`;
     document
       .getElementById("streams__container")
       .insertAdjacentHTML("beforeend", player);
@@ -504,266 +559,278 @@ const Room = () => {
 
   return (
 
+    // <Box sx={{ display: 'flex' }}>
+    //   <CssBaseline />
+    // <AppBar position="fixed" open={open}>
+    //   <Toolbar>
+    //     <Typography variant="h6" noWrap sx={{ flexGrow: 1 }} component="div">
+    //       Persistent drawer
+    //     </Typography>
+    //     <IconButton color="inherit" aria-label="open drawer" edge="end" onClick={toggleDrawer}>
+    //       <MenuIcon />
+    //     </IconButton>
+    //   </Toolbar>
+    // </AppBar>
+    //   <Main open={open}>
+    //     <DrawerHeader />
+    //     <Typography>
+    //       Lorem ipsum dolor sit amet, consectetur adipisicing elit. Modi ipsam debitis dicta eaque rem dolorum suscipit cupiditate optio quam rerum possimus facere accusantium est, excepturi a molestias autem consectetur ducimus. Facere atque provident cumque necessitatibus illum veniam ullam, deleniti ut commodi ipsa aliquid blanditiis reiciendis repellendus nobis, qui ea est incidunt alias similique voluptatibus a, placeat tenetur. Nesciunt quo laborum perferendis recusandae dolor molestias necessitatibus enim nostrum culpa ex, modi molestiae omnis natus architecto repellat doloremque voluptates unde quae magni maiores. Laudantium quisquam, a vitae commodi, maxime, in rerum enim quo facilis totam ea nostrum fugit. Corporis ipsam praesentium pariatur!
+    //     </Typography>
+    //   </Main>
+    //   <Drawer
+    //     sx={{
+    //       width: drawerWidth,
+    //       flexShrink: 0,
+    //       '& .MuiDrawer-paper': {
+    //         width: drawerWidth,
+    //       },
+    //     }}
+    //     variant="persistent"
+    //     anchor="right"
+    //     open={open}
+    //   >
+    //     <DrawerHeader>
+    //       <IconButton onClick={toggleDrawer}>
+    //         {open ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+    //       </IconButton>
+    //     </DrawerHeader>
+    //     <Divider />
+    //   </Drawer>
+    // </Box>
+
+
+
+
     <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar position="fixed" open={open}>
-        <Toolbar>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }} component="div">
-            Persistent drawer
-          </Typography>
-          <IconButton color="inherit" aria-label="open drawer" edge="end" onClick={toggleDrawer}>
-            <MenuIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+
+
+      {/* <header id="nav">
+        <div className="nav--list">
+          <button id="members__button">
+            <svg
+              width="24"
+              height="24"
+              xmlns="http://www.w3.org/2000/svg"
+              fillRule="evenodd"
+              clipRule="evenodd"
+            >
+              <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+            </svg>
+          </button>
+          <a href="lobby.html">
+            <h3 id="logo">
+              <span>Meet.MyDay</span>
+            </h3>
+          </a>
+        </div>
+
+        <div id="nav__links">
+          <button id="chat__button">
+            <svg
+              width="24"
+              height="24"
+              xmlns="http://www.w3.org/2000/svg"
+              fillRule="evenodd"
+              fill="#ede0e0"
+              clipRule="evenodd"
+            >
+              <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+            </svg>
+          </button>
+          <a className="nav__link" id="copy__link__btn">
+            Copy Share Link
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              fill="#ede0e0"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
+            </svg>
+          </a>
+        </div>
+      </header> */}
+
+
+
+
+      <Box sx={{ flexShrink: 0 }}>
+        {/* Control Buttons Section */}
+        {joined && (
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '16px',
+              backgroundColor: '#1a1a1a', // Example background to separate it visually
+              padding: '16px',
+              position: 'fixed', // Fix it at the top/bottom or as required
+              bottom: 0, // If you want it at the bottom
+              width: '100%',
+            }}
+          >
+
+            <GradientIconButton onClick={toggleMic} isSelected={micOn}>
+              {micOn ? <MicIcon /> : <MicOffIcon />}
+            </GradientIconButton>
+
+            <GradientIconButton onClick={toggleCamera} isSelected={cameraOn}>
+              {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
+            </GradientIconButton>
+
+            <GradientIconButton onClick={toggleScreen} isSelected={sharingScreen}>
+              {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+            </GradientIconButton>
+
+            <GradientIconButton>
+              <RecordIcon />
+            </GradientIconButton>
+
+
+            {/*  */}
+
+            <GradientIconButton>
+              <InfoIcon />
+            </GradientIconButton>
+
+            <GradientIconButton>
+              <PeopleIcon />
+            </GradientIconButton>
+
+            <GradientIconButton onClick={toggleDrawer} isSelected={open}>
+              {open ? <ChatOffIcon /> : <ChatIcon />}
+            </GradientIconButton>
+
+
+
+            <Button
+              onClick={leaveStream}
+              variant="contained"
+              color="error"
+            >
+              Leave
+            </Button>
+          </Box>
+        )}
+      </Box>
+
+
       <Main open={open}>
-        <DrawerHeader />
-        <Typography>
-          Your content goes here...
-        </Typography>
+
+        <main className="container">
+          {/* <Typography>
+            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Suscipit nesciunt veritatis doloremque eius assumenda expedita ratione commodi eaque, voluptatum necessitatibus autem nobis cumque fugit quibusdam vitae nam, deleniti accusantium, rem possimus recusandae illo ullam! Tempore neque odit suscipit quibusdam nihil amet dolore possimus sequi fugit. Unde, perferendis, et aspernatur assumenda quam nostrum, ullam aliquid iste tempore temporibus quia id iusto. Aliquid vitae vero autem voluptatum beatae pariatur exercitationem perferendis fugiat facere. Non facere dicta aspernatur beatae ratione earum soluta totam inventore. Ipsa odit ducimus eum similique fugit exercitationem totam vitae ab at. Accusantium quo in deleniti qui nihil exercitationem necessitatibus!
+          </Typography> */}
+          <div id="room__container"
+            style={{
+              // display: "flex",
+              // flexDirection: "row",
+              flexGrow: 1,
+              // justifyContent: 'space-between',
+              // flexWrap: 'wrap',
+            }}>
+
+            {/* <section id="stream__container" > */}
+            <div id="stream__box" ref={streamBoxRef}></div>
+            {/* <div id="stream__box" onClick={myFunction()}></div> */}
+            <div id="streams__container"></div>
+
+            {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
+
+
+
+            {/* Control buttons for participants and chat messages */}
+            {/* <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
+              <IconButton onClick={toggleDrawer}>
+                <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+                </svg>
+              </IconButton>
+              <IconButton onClick={toggleDrawer}>
+                <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+                </svg>
+              </IconButton>
+            </div> */}
+
+            {leftMeeting && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <Button onClick={handleRejoin} variant="contained" color="error">
+                  Rejoin Meeting
+                </Button>
+                <Button onClick={handleRejoin} variant="contained" color="success">
+                  Go to Lobby
+                </Button>
+              </div>
+            )}
+
+            {/* </section> */}
+
+
+          </div>
+        </main>
       </Main>
+
+
+
+      {/* Persistent Drawer for Participants and Chat Messages */}
       <Drawer
         sx={{
           width: drawerWidth,
-          flexShrink: 0,
+          flexShrink: 0, // Prevent shrinking
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
+            width: drawerWidth, // Ensure the paper has the correct width
+            transition: theme.transitions.create(['width'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
+            }),
           },
         }}
         variant="persistent"
         anchor="right"
         open={open}
       >
-        <DrawerHeader>
-          <IconButton onClick={toggleDrawer}>
-            {open ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </IconButton>
-        </DrawerHeader>
-        <Divider />
+
+        {/* <DrawerHeader>
+                  <IconButton onClick={toggleDrawer}>
+                  {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                  </IconButton>
+                  </DrawerHeader> */}
+        {/* <Divider /> */}
+        {/* Add any content you want inside the drawer */}
+
+        <Box sx={{ marginTop: "70px" }}>
+          <section id="messages__container">
+
+            <div id="messages">
+              <div className="message__wrapper">
+                <div className="message__body">
+                  <strong className="message__author">Sithu Soe</strong>
+                  <p className="message__text">Hii Hello</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="message__form">
+              <input
+                type="text"
+                name="message"
+                placeholder="Send a message...."
+              />
+            </form>
+          </section>
+        </Box>
       </Drawer>
-    </Box>
 
-    // <div>
-    //   <header id="nav">
-    //     <div className="nav--list">
-    //       <button id="members__button">
-    //         <svg
-    //           width="24"
-    //           height="24"
-    //           xmlns="http://www.w3.org/2000/svg"
-    //           fillRule="evenodd"
-    //           clipRule="evenodd"
-    //         >
-    //           {/* <path d="M24 18v1h-24v-1h24zm0-6v1h-24v-1h24zm0-6v1h-24v-1h24z" fill="#ede0e0"> */}
-    //           <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-    //         </svg>
-    //       </button>
-    //       <a href="lobby.html">
-    //         <h3 id="logo">
-    //           {/* <!-- <img src="./images/logo.png" alt="Site Logo"> --> */}
-    //           <span>Meet.MyDay</span>
-    //         </h3>
-    //       </a>
-    //     </div>
+    </Box >
 
-    //     <div id="nav__links">
-    //       <button id="chat__button">
-    //         <svg
-    //           width="24"
-    //           height="24"
-    //           xmlns="http://www.w3.org/2000/svg"
-    //           fillRule="evenodd"
-    //           fill="#ede0e0"
-    //           clipRule="evenodd"
-    //         >
-    //           <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-    //         </svg>
-    //       </button>
-    //       <a className="nav__link" id="copy__link__btn">
-    //         Copy Share Link
-    //         <svg
-    //           xmlns="http://www.w3.org/2000/svg"
-    //           width="24"
-    //           height="24"
-    //           fill="#ede0e0"
-    //           viewBox="0 0 24 24"
-    //         >
-    //           <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
-    //         </svg>
-    //       </a>
-    //     </div>
-    //   </header>
-
-    //   <Main open={drawerOpen}>
-
-    //     <main className="container">
-    //       <div id="room__container">
-
-
-    //         <section id="stream__container">
-    //           <div id="stream__box" ref={streamBoxRef}></div>
-    //           {/* <div id="stream__box" onClick={myFunction()}></div> */}
-    //           <div id="streams__container"></div>
-
-    //           {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
-
-    //           {joined && (
-    //             <div className="control-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-
-    //               <IconButton onClick={toggleDrawer}>
-    //                 {/* Icon for Participants */}
-    //                 <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-    //                   <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-    //                 </svg>
-    //               </IconButton>
-
-    //               <IconButton
-    //                 onClick={toggleMic}
-    //                 sx={{
-    //                   backgroundColor: micOn ? "#845695" : "#f0f0f0", // Reflect mic state visually
-    //                   color: micOn ? "#fff" : "#000",
-    //                   "&:hover": {
-    //                     backgroundColor: micOn ? "#6d477c" : "#e0e0e0",
-    //                   },
-    //                 }}
-    //               >
-    //                 {micOn ? <MicIcon /> : <MicOffIcon />}
-    //                 {/* {micOn ? "True Unmute" : "False Mute"} */}
-    //               </IconButton>
-
-    //               <IconButton
-    //                 onClick={toggleCamera}
-    //                 sx={{
-    //                   backgroundColor: cameraOn ? "#845695" : "#f0f0f0",
-    //                   color: cameraOn ? "#fff" : "#000",
-    //                   "&:hover": {
-    //                     backgroundColor: cameraOn ? "#6d477c" : "#e0e0e0",
-    //                   },
-    //                 }}
-    //               >
-    //                 {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
-    //               </IconButton>
-    //               <IconButton
-    //                 onClick={toggleScreen}
-    //                 sx={{
-    //                   backgroundColor: sharingScreen ? "#845695" : "#f0f0f0",
-    //                   color: sharingScreen ? "#fff" : "#000",
-    //                   "&:hover": {
-    //                     backgroundColor: sharingScreen ? "#6d477c" : "#e0e0e0",
-    //                   },
-    //                 }}
-    //               >
-    //                 {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
-    //               </IconButton>
-    //               <IconButton
-    //                 // onClick={startRecording}
-    //                 sx={{
-    //                   backgroundColor: "#845695",
-    //                   color: "#fff",
-    //                   "&:hover": {
-    //                     backgroundColor: "#6d477c",
-    //                   },
-    //                 }}
-    //               >
-    //                 <RecordVoiceOverIcon />
-    //               </IconButton>
-    //               <Button
-    //                 onClick={leaveStream}
-    //                 variant="contained"
-    //                 sx={{
-    //                   backgroundColor: "#845695",
-    //                   "&:hover": {
-    //                     backgroundColor: "#6d477c",
-    //                   },
-    //                 }}
-    //               >
-    //                 Leave
-    //               </Button>
-    //             </div>
-    //           )}
-
-
-    //           {/* Persistent Drawer for Participants and Chat Messages */}
-    //           <Drawer
-    //             sx={{
-    //               width: drawerWidth,
-    //               flexShrink: 0,
-    //               '& .MuiDrawer-paper': {
-    //                 width: drawerWidth,
-    //               },
-    //             }}
-    //             variant="persistent"
-    //             anchor="right"
-    //             open={drawerOpen}  // Updated to use drawerOpen state
-    //           >
-    //             {/* <DrawerHeader>
-    //             <IconButton onClick={toggleDrawer}>
-    //               {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-    //             </IconButton>
-    //           </DrawerHeader> */}
-    //             {/* <Divider /> */}
-    //             {/* Add any content you want inside the drawer */}
-    //             <Box sx={{ marginTop: "70px" }}>
-    //               <section id="messages__container">
-
-    //                 <div id="messages">
-    //                   <div class="message__wrapper">
-    //                     <div class="message__body">
-    //                       <strong class="message__author">Sithu Soe</strong>
-    //                       <p class="message__text">Hii Helloi</p>
-    //                     </div>
-    //                   </div>
-    //                 </div>
-
-    //                 <form id="message__form">
-    //                   <input
-    //                     type="text"
-    //                     name="message"
-    //                     placeholder="Send a message...."
-    //                   />
-    //                 </form>
-    //               </section>
-    //             </Box>
-    //           </Drawer>
-
-
-
-    //           {/* Control buttons for participants and chat messages */}
-    //           <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
-    //             <IconButton onClick={toggleDrawer}>
-    //               {/* Icon for Participants */}
-    //               <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-    //                 <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-    //               </svg>
-    //             </IconButton>
-    //             <IconButton onClick={toggleDrawer}>
-    //               {/* Icon for Chat Messages */}
-    //               <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-    //                 <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-    //               </svg>
-    //             </IconButton>
-    //           </div>
-
-    //           {leftMeeting && (
-    //             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-    //               <Button onClick={handleRejoin} variant="contained" color="error">
-    //                 Rejoin Meeting
-    //               </Button>
-    //               <Button onClick={handleRejoin} variant="contained" color="success">
-    //                 Go to Lobby
-    //               </Button>
-    //             </div>
-    //           )}
-
-    //         </section>
-
-
-    //       </div>
-    //     </main>
-    //   </Main>
-
-    // </div>
   );
 };
 
 export default Room;
+

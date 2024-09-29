@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Lobby from "./pages/Lobby";
 import Room from "./pages/Room";
 
+
 const App = () => {
   return (
     <Router>
@@ -11,7 +12,6 @@ const App = () => {
         <Route path="/" element={<Login />} />
         <Route path="/lobby" element={<Lobby />} />
         <Route path="/room" element={<Room />} />
-        {/* Add other routes as needed */}
       </Routes>
     </Router>
   );
