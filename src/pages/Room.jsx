@@ -56,28 +56,6 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
 );
 
 
-// const AppBar = styled(MuiAppBar, {
-//   shouldForwardProp: (prop) => prop !== 'open',
-// })(({ theme, open }) => ({
-//   transition: theme.transitions.create(['margin', 'width'], {
-//     easing: open ? theme.transitions.easing.easeOut : theme.transitions.easing.sharp,
-//     duration: open ? theme.transitions.duration.enteringScreen : theme.transitions.duration.leavingScreen,
-//   }),
-//   width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
-//   marginRight: open ? `${drawerWidth}px` : 0,  // Adjust the AppBar's width and margin for right-side drawer
-// }));
-
-
-
-// const DrawerHeader = styled('div')(({ theme }) => ({
-//   display: 'flex',
-//   alignItems: 'center',
-//   padding: theme.spacing(0, 1),
-//   ...theme.mixins.toolbar,
-//   justifyContent: 'flex-start',
-// }));
-
-
 const Room = () => {
   const location = useLocation();
   const theme = useTheme();
@@ -111,6 +89,8 @@ const Room = () => {
   const [leftMeeting, setLeftMeeting] = useState(false); // New state for tracking if user left
 
   const [fullscreen, setFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const [open, setOpen] = useState(false);
 
   const handleDrawerOpen = () => {
@@ -154,7 +134,7 @@ const Room = () => {
 
 
       // Join the RTC channel
-      await client.current.join("00619547e2b1603452688a040cc0a219aeaIADN1BPLiK1pE0stbNbndlfSRoNuRxsh8oR2AZXNWaYlWa0Tte8AAAAAIgCIa0MSUW/6ZgQAAQDReR9sAgDReR9sAwDReR9sBADReR9s", channelName, null, formattedUid);
+      await client.current.join(rtcToken, channelName, null, formattedUid);
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
@@ -218,17 +198,6 @@ const Room = () => {
 
       // Create player container for local user
       if (!document.getElementById("user-container-local")) {
-        // const player = `
-        // <div class="video__container" id="user-container-local" onclick="expandVideoFrame()">
-        // <div class="video-player" id="user-local"></div>
-        // <div class="video-name">${displayName} (You)</div>
-        // <div class="placeholder" id="placeholder-local">Camera is Off</div>
-        // </div>`;
-        // document
-        // .getElementById("streams__container")
-        // .insertAdjacentHTML("beforeend", player);
-
-
         const player = document.createElement("div");
         player.className = "video__container";
         player.id = `user-container-local`;
@@ -276,6 +245,8 @@ const Room = () => {
   };
 
 
+
+
   const expandVideoFrame = (e) => {
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
@@ -285,12 +256,6 @@ const Room = () => {
     if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
       // Reset the display frame and resize all videos back to normal
       displayFrame.style.display = "none";
-      displayFrame.style.position = ""; // Reset position
-      displayFrame.style.top = ""; // Reset top
-      displayFrame.style.left = ""; // Reset left
-      displayFrame.style.width = ""; // Reset width
-      displayFrame.style.height = ""; // Reset height
-      displayFrame.style.zIndex = ""; // Reset zIndex
 
       // Move the clicked element back to its original position
       const originalContainer = document.getElementById("streams__container");
@@ -314,18 +279,6 @@ const Room = () => {
       displayFrame.appendChild(clickedElement);
       userIdInDisplayFrame.current = clickedElement.id;
 
-      // Set the displayFrame to full-screen dimensions
-      displayFrame.style.position = "fixed"; // Fix it on the screen
-      displayFrame.style.top = "0"; // Position it at the top
-      displayFrame.style.left = "0"; // Position it on the left
-      displayFrame.style.width = "100vw"; // Full viewport width
-      displayFrame.style.height = "100vh"; // Full viewport height
-      displayFrame.style.zIndex = "999"; // Bring it on top of other elements
-
-      // Set the clicked video element to occupy the full display frame
-      clickedElement.style.width = "100%";
-      clickedElement.style.height = "100%";
-
       // Resize other videos to small size
       for (let i = 0; i < videoFrames.length; i++) {
         if (videoFrames[i].id !== userIdInDisplayFrame.current) {
@@ -335,6 +288,37 @@ const Room = () => {
       }
     }
   };
+
+  // Fullscreen toggle function
+  const toggleFullscreen = (e) => {
+    const displayFrame = streamBoxRef.current;
+
+    if (!document.fullscreenElement) {
+      // Enter fullscreen
+      if (displayFrame.requestFullscreen) {
+        displayFrame.requestFullscreen();
+      } else if (displayFrame.mozRequestFullScreen) { // For Firefox
+        displayFrame.mozRequestFullScreen();
+      } else if (displayFrame.webkitRequestFullscreen) { // For Chrome, Safari, and Opera
+        displayFrame.webkitRequestFullscreen();
+      } else if (displayFrame.msRequestFullscreen) { // For IE/Edge
+        displayFrame.msRequestFullscreen();
+      }
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) { // For Firefox
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) { // For IE/Edge
+        document.msExitFullscreen();
+      }
+    }
+  };
+
+
 
 
   const handleUserPublished = async (user, mediaType) => {
@@ -574,47 +558,6 @@ const Room = () => {
 
   return (
 
-    // <Box sx={{ display: 'flex' }}>
-    //   <CssBaseline />
-    // <AppBar position="fixed" open={open}>
-    //   <Toolbar>
-    //     <Typography variant="h6" noWrap sx={{ flexGrow: 1 }} component="div">
-    //       Persistent drawer
-    //     </Typography>
-    //     <IconButton color="inherit" aria-label="open drawer" edge="end" onClick={toggleDrawer}>
-    //       <MenuIcon />
-    //     </IconButton>
-    //   </Toolbar>
-    // </AppBar>
-    //   <Main open={open}>
-    //     <DrawerHeader />
-    //     <Typography>
-    //       Lorem ipsum dolor sit amet, consectetur adipisicing elit. Modi ipsam debitis dicta eaque rem dolorum suscipit cupiditate optio quam rerum possimus facere accusantium est, excepturi a molestias autem consectetur ducimus. Facere atque provident cumque necessitatibus illum veniam ullam, deleniti ut commodi ipsa aliquid blanditiis reiciendis repellendus nobis, qui ea est incidunt alias similique voluptatibus a, placeat tenetur. Nesciunt quo laborum perferendis recusandae dolor molestias necessitatibus enim nostrum culpa ex, modi molestiae omnis natus architecto repellat doloremque voluptates unde quae magni maiores. Laudantium quisquam, a vitae commodi, maxime, in rerum enim quo facilis totam ea nostrum fugit. Corporis ipsam praesentium pariatur!
-    //     </Typography>
-    //   </Main>
-    //   <Drawer
-    //     sx={{
-    //       width: drawerWidth,
-    //       flexShrink: 0,
-    //       '& .MuiDrawer-paper': {
-    //         width: drawerWidth,
-    //       },
-    //     }}
-    //     variant="persistent"
-    //     anchor="right"
-    //     open={open}
-    //   >
-    //     <DrawerHeader>
-    //       <IconButton onClick={toggleDrawer}>
-    //         {open ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-    //       </IconButton>
-    //     </DrawerHeader>
-    //     <Divider />
-    //   </Drawer>
-    // </Box>
-
-
-
 
     <Box sx={{ display: 'flex' }}>
 
@@ -734,56 +677,26 @@ const Room = () => {
       <Main open={open}>
 
         <main className="container">
-          {/* <Typography>
-            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Suscipit nesciunt veritatis doloremque eius assumenda expedita ratione commodi eaque, voluptatum necessitatibus autem nobis cumque fugit quibusdam vitae nam, deleniti accusantium, rem possimus recusandae illo ullam! Tempore neque odit suscipit quibusdam nihil amet dolore possimus sequi fugit. Unde, perferendis, et aspernatur assumenda quam nostrum, ullam aliquid iste tempore temporibus quia id iusto. Aliquid vitae vero autem voluptatum beatae pariatur exercitationem perferendis fugiat facere. Non facere dicta aspernatur beatae ratione earum soluta totam inventore. Ipsa odit ducimus eum similique fugit exercitationem totam vitae ab at. Accusantium quo in deleniti qui nihil exercitationem necessitatibus!
-          </Typography> */}
-          <div id="room__container"
-            style={{
-              // display: "flex",
-              // flexDirection: "row",
-              flexGrow: 1,
-              // justifyContent: 'space-between',
-              // flexWrap: 'wrap',
-            }}>
 
-            {/* <section id="stream__container" > */}
-            <div id="stream__box" ref={streamBoxRef}></div>
-            {/* <div id="stream__box" onClick={myFunction()}></div> */}
+          <div id="room__container" style={{ flexGrow: 1 }}>
+            <div id="stream__box" ref={streamBoxRef} style={{ position: 'relative' }}>
+              {isFullscreen ? (
+                <FullscreenExitIcon
+                  onClick={toggleFullscreen}
+                  className="fullscreen-btn"
+                />
+              ) : (
+                <FullscreenIcon
+                  onClick={toggleFullscreen}
+                  className="fullscreen-btn"
+                />
+              )}
+            </div>
             <div id="streams__container"></div>
-
-            {/* {!joined && <button onClick={joinStream}>Join Stream</button>} */}
-
-
-
-            {/* Control buttons for participants and chat messages */}
-            {/* <div style={{ display: 'flex', justifyContent: 'end', padding: '10px' }}>
-              <IconButton onClick={toggleDrawer}>
-                <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-                </svg>
-              </IconButton>
-              <IconButton onClick={toggleDrawer}>
-                <svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-                </svg>
-              </IconButton>
-            </div> */}
-
-            {leftMeeting && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <Button onClick={handleRejoin} variant="contained" color="error">
-                  Rejoin Meeting
-                </Button>
-                <Button onClick={handleRejoin} variant="contained" color="success">
-                  Go to Lobby
-                </Button>
-              </div>
-            )}
-
-            {/* </section> */}
-
-
           </div>
+
+
+
         </main>
       </Main>
 

@@ -1,3 +1,25 @@
+/* Style for the fullscreen button */
+.fullscreen-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.3); /* Transparent background */
+  border-radius: 50%;
+  padding: 16px;
+  display: none; /* Initially hidden */
+  transition: background-color 0.3s;
+}
+
+/* Show fullscreen button on hover */
+#stream__box:hover .fullscreen-btn {
+  display: block;
+  background-color: rgba(0, 0, 0, 0.5); /* Less transparency on hover */
+}
+
+
 .placeholder {
   display: none;
   position: absolute;
