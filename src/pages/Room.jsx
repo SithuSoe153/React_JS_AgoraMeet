@@ -204,9 +204,9 @@ const Room = () => {
         player.onclick = expandVideoFrame; // Assign the click handler
 
         player.innerHTML = `
- <div class="video-player" id="user-local"></div>
- <div class="video-name">${displayName} (You)</div>
- <div class="placeholder" id="placeholder-local">Camera is Off</div>
+        <div class="video-player" id="user-local"></div>
+          <div class="video-name">${displayName} (You)</div>
+        <div class="placeholder" id="placeholder-local">Camera is Off</div>
  `;
 
         document.getElementById("streams__container").appendChild(player);
@@ -244,22 +244,18 @@ const Room = () => {
     }
   };
 
-
-
-
   const expandVideoFrame = (e) => {
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
     const clickedElement = e.currentTarget;
 
-    // Check if the clicked element is already in the display frame
     if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
       // Reset the display frame and resize all videos back to normal
       displayFrame.style.display = "none";
 
-      // Move the clicked element back to its original position
+      // Only append if it's not already a child
       const originalContainer = document.getElementById("streams__container");
-      if (clickedElement) {
+      if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
       }
 
@@ -269,12 +265,16 @@ const Room = () => {
         videoFrames[i].style.width = ""; // Reset width
       }
     } else {
-      // Remove any current video in display frame
+      // Remove any current video in display frame if it exists
       if (displayFrame.firstChild) {
-        document.getElementById("streams__container").appendChild(displayFrame.firstChild);
+        const existingChild = displayFrame.firstChild;
+        const originalContainer = document.getElementById("streams__container");
+        if (originalContainer && !originalContainer.contains(existingChild)) {
+          originalContainer.appendChild(existingChild);
+        }
       }
 
-      // Display the clicked video in full-screen
+      // Display the clicked video in expanded mode
       displayFrame.style.display = "block";
       displayFrame.appendChild(clickedElement);
       userIdInDisplayFrame.current = clickedElement.id;
@@ -289,7 +289,8 @@ const Room = () => {
     }
   };
 
-  // Fullscreen toggle function
+
+
   const toggleFullscreen = (e) => {
     const displayFrame = streamBoxRef.current;
 
@@ -305,19 +306,27 @@ const Room = () => {
         displayFrame.msRequestFullscreen();
       }
     } else {
-      // Exit fullscreen
+      // Exit fullscreen and reset video frame
       if (document.exitFullscreen) {
-        document.exitFullscreen();
+        document.exitFullscreen().then(() => {
+          // Reset to small view after exiting fullscreen
+          expandVideoFrame(e);
+        });
       } else if (document.mozCancelFullScreen) { // For Firefox
-        document.mozCancelFullScreen();
+        document.mozCancelFullScreen().then(() => {
+          expandVideoFrame(e);
+        });
       } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
-        document.webkitExitFullscreen();
+        document.webkitExitFullscreen().then(() => {
+          expandVideoFrame(e);
+        });
       } else if (document.msExitFullscreen) { // For IE/Edge
-        document.msExitFullscreen();
+        document.msExitFullscreen().then(() => {
+          expandVideoFrame(e);
+        });
       }
     }
   };
-
 
 
 
@@ -675,9 +684,7 @@ const Room = () => {
 
 
       <Main open={open}>
-
         <main className="container">
-
           <div id="room__container" style={{ flexGrow: 1 }}>
             <div id="stream__box" ref={streamBoxRef} style={{ position: 'relative' }}>
               {isFullscreen ? (
@@ -694,9 +701,6 @@ const Room = () => {
             </div>
             <div id="streams__container"></div>
           </div>
-
-
-
         </main>
       </Main>
 
