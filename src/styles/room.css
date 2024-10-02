@@ -1,20 +1,45 @@
-.fullscreen-btn {
+.fullscreen-btn-container {
   position: absolute;
-  top: 50%; /* Center vertically */
-  left: 50%; /* Center horizontally */
-  transform: translate(-50%, -50%);
+  top: 10px;
+  /* Adjust to suit your design */
+  right: 10px;
+  /* Adjust to suit your design */
+  z-index: 10;
+  /* Ensure it's above the video content */
+  display: block;
+  /* Initially hidden */
+}
+
+#stream__box:hover .fullscreen-btn-container {
+  display: block;
+  /* Show the button when hovering over the expanded video */
+}
+
+.fullscreen-btn {
   cursor: pointer;
   color: white;
   background-color: rgba(0, 0, 0, 0.5);
+  /* Semi-transparent background */
   border-radius: 50%;
-  padding: 8px;
-  display: none; /* Initially hidden */
-  z-index: 10; /* Ensure it stays above other elements */
+  /* Circular button */
+  padding: 10px;
+  /* Adjust the size of the button */
+  transition: background-color 0.3s ease;
+  /* Smooth background transition */
 }
 
-/* Show fullscreen button on hover */
-#stream__box:hover .fullscreen-btn {
-  display: block;
+.fullscreen-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+  /* Darker background on hover */
+}
+
+/* Additional styling for fullscreen mode (optional) */
+.isFullscreen .fullscreen-btn {
+  /* Custom styles when in fullscreen, if needed */
+}
+
+.isExpanded .fullscreen-btn {
+  /* Custom styles when in expanded mode, if needed */
 }
 
 

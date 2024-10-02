@@ -90,6 +90,7 @@ const Room = () => {
 
   const [fullscreen, setFullscreen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const [open, setOpen] = useState(false);
 
@@ -182,18 +183,31 @@ const Room = () => {
 
 
 
+
   const joinStream = async () => {
     try {
       let audioTrack, videoTrack;
 
-      // Create audio track regardless of initial mic setting
-      // audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
-      audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
+      // Create audio track only if mic is on
+      if (micOn) {
+        audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      }
 
-      // Create video track based on camera setting
-      videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
+      // Create video track only if camera is on
+      if (cameraOn) {
+        videoTrack = await AgoraRTC.createCameraVideoTrack();
+      }
 
-      const tracksToPublish = [audioTrack, videoTrack];
+      const tracksToPublish = [];
+
+      if (micOn && audioTrack) {
+        tracksToPublish.push(audioTrack);
+      }
+
+      if (cameraOn && videoTrack) {
+        tracksToPublish.push(videoTrack);
+      }
+
       setLocalTracks([audioTrack, videoTrack]);
 
       // Create player container for local user
@@ -201,37 +215,43 @@ const Room = () => {
         const player = document.createElement("div");
         player.className = "video__container";
         player.id = `user-container-local`;
-        player.onclick = expandVideoFrame; // Assign the click handler
-
+        player.onclick = (e) => {
+          expandVideoFrame(e);
+        };
         player.innerHTML = `
-        <div class="video-player" id="user-local"></div>
+          <div class="video-player" id="user-local"></div>
           <div class="video-name">${displayName} (You)</div>
-        <div class="placeholder" id="placeholder-local">Camera is Off</div>
- `;
+          <div class="placeholder" id="placeholder-local">Camera is Off</div>
+        `;
 
         document.getElementById("streams__container").appendChild(player);
-
-
       }
 
       const placeholder = document.getElementById("placeholder-local");
-
-      // Always show the container
       const localContainer = document.getElementById("user-container-local");
       localContainer.style.display = "block";
 
       // Publish tracks initially
       await client.current.publish(tracksToPublish);
 
-      // Handle mic and camera states after publishing
+      // Handle mic state after publishing
       if (!micOn) {
-        await audioTrack.setMuted(true); // Mute audio instead of disabling
+        if (audioTrack) {
+          await client.current.unpublish(audioTrack); // Unpublish audio track to stop sending audio
+          audioTrack.stop(); // Stop the audio track to turn off mic
+          audioTrack.close(); // Destroy the track to release resources
+        }
       }
 
+      // Handle camera state after publishing
       if (!cameraOn) {
-        await videoTrack.setMuted(true); // Mute video instead of disabling
+        if (videoTrack) {
+          await client.current.unpublish(videoTrack); // Unpublish video track to stop sending video
+          videoTrack.stop(); // Stop the video track
+          videoTrack.close(); // Destroy the track to release resources
+        }
         placeholder.style.display = "block"; // Show placeholder if video is off
-      } else {
+      } else if (videoTrack) {
         videoTrack.play("user-local");
         placeholder.style.display = "none"; // Hide placeholder if video is available
       }
@@ -244,89 +264,7 @@ const Room = () => {
     }
   };
 
-  const expandVideoFrame = (e) => {
-    const displayFrame = streamBoxRef.current;
-    const videoFrames = document.getElementsByClassName("video__container");
-    const clickedElement = e.currentTarget;
 
-    if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
-      // Reset the display frame and resize all videos back to normal
-      displayFrame.style.display = "none";
-
-      // Only append if it's not already a child
-      const originalContainer = document.getElementById("streams__container");
-      if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
-        originalContainer.appendChild(clickedElement);
-      }
-
-      // Reset dimensions for all videos
-      for (let i = 0; i < videoFrames.length; i++) {
-        videoFrames[i].style.height = ""; // Reset height
-        videoFrames[i].style.width = ""; // Reset width
-      }
-    } else {
-      // Remove any current video in display frame if it exists
-      if (displayFrame.firstChild) {
-        const existingChild = displayFrame.firstChild;
-        const originalContainer = document.getElementById("streams__container");
-        if (originalContainer && !originalContainer.contains(existingChild)) {
-          originalContainer.appendChild(existingChild);
-        }
-      }
-
-      // Display the clicked video in expanded mode
-      displayFrame.style.display = "block";
-      displayFrame.appendChild(clickedElement);
-      userIdInDisplayFrame.current = clickedElement.id;
-
-      // Resize other videos to small size
-      for (let i = 0; i < videoFrames.length; i++) {
-        if (videoFrames[i].id !== userIdInDisplayFrame.current) {
-          videoFrames[i].style.height = "100px";
-          videoFrames[i].style.width = "100px";
-        }
-      }
-    }
-  };
-
-
-
-  const toggleFullscreen = (e) => {
-    const displayFrame = streamBoxRef.current;
-
-    if (!document.fullscreenElement) {
-      // Enter fullscreen
-      if (displayFrame.requestFullscreen) {
-        displayFrame.requestFullscreen();
-      } else if (displayFrame.mozRequestFullScreen) { // For Firefox
-        displayFrame.mozRequestFullScreen();
-      } else if (displayFrame.webkitRequestFullscreen) { // For Chrome, Safari, and Opera
-        displayFrame.webkitRequestFullscreen();
-      } else if (displayFrame.msRequestFullscreen) { // For IE/Edge
-        displayFrame.msRequestFullscreen();
-      }
-    } else {
-      // Exit fullscreen and reset video frame
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => {
-          // Reset to small view after exiting fullscreen
-          expandVideoFrame(e);
-        });
-      } else if (document.mozCancelFullScreen) { // For Firefox
-        document.mozCancelFullScreen().then(() => {
-          expandVideoFrame(e);
-        });
-      } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
-        document.webkitExitFullscreen().then(() => {
-          expandVideoFrame(e);
-        });
-      } else if (document.msExitFullscreen) { // For IE/Edge
-        document.msExitFullscreen().then(() => {
-          expandVideoFrame(e);
-        });
-      }
-    }
-  };
 
 
 
@@ -383,7 +321,245 @@ const Room = () => {
     }
   };
 
+
+  const expandVideoFrame = (e) => {
+
+    const displayFrame = streamBoxRef.current;
+    const videoFrames = document.getElementsByClassName("video__container");
+    const clickedElement = e.currentTarget;
+
+    if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
+      // Reset the display frame and resize all videos back to normal
+      displayFrame.style.display = "none";
+
+      // Only append if it's not already a child
+      const originalContainer = document.getElementById("streams__container");
+      if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
+        originalContainer.appendChild(clickedElement);
+        // alert("false")
+        setIsExpanded(false)
+      }
+
+      // Reset dimensions for all videos
+      for (let i = 0; i < videoFrames.length; i++) {
+        videoFrames[i].style.height = ""; // Reset height
+        videoFrames[i].style.width = ""; // Reset width
+      }
+
+
+    } else {
+
+      // Remove any current video in display frame if it exists
+      if (displayFrame.firstChild) {
+        const existingChild = displayFrame.firstChild;
+        const originalContainer = document.getElementById("streams__container");
+        if (originalContainer && !originalContainer.contains(existingChild)) {
+          originalContainer.appendChild(existingChild);
+        }
+
+      }
+
+      // Display the clicked video in expanded mode
+      displayFrame.style.display = "block";
+      displayFrame.appendChild(clickedElement);
+      userIdInDisplayFrame.current = clickedElement.id;
+
+      // Resize other videos to small size
+      for (let i = 0; i < videoFrames.length; i++) {
+        if (videoFrames[i].id !== userIdInDisplayFrame.current) {
+          videoFrames[i].style.height = "100px";
+          videoFrames[i].style.width = "100px";
+        }
+      }
+    }
+  };
+
+
+
+  // const expandVideoFrame = (e) => {
+
+  //   const displayFrame = streamBoxRef.current;
+  //   const videoFrames = document.getElementsByClassName("video__container");
+  //   const clickedElement = e.currentTarget;
+
+  //   if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
+  //     setIsExpanded(false)
+  //     // Reset the display frame and resize all videos back to normal
+  //     displayFrame.style.display = "none";
+
+  //     // Only append if it's not already a child
+  //     const originalContainer = document.getElementById("streams__container");
+  //     if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
+  //       originalContainer.appendChild(clickedElement);
+  //     }
+
+  //     // Reset dimensions for all videos
+  //     for (let i = 0; i < videoFrames.length; i++) {
+  //       videoFrames[i].style.height = ""; // Reset height
+  //       videoFrames[i].style.width = ""; // Reset width
+  //     }
+  //   } else {
+
+  //     setIsExpanded(true)
+
+  //     // Remove any current video in display frame if it exists
+  //     if (displayFrame.firstChild) {
+  //       const existingChild = displayFrame.firstChild;
+  //       const originalContainer = document.getElementById("streams__container");
+  //       if (originalContainer && !originalContainer.contains(existingChild)) {
+  //         originalContainer.appendChild(existingChild);
+  //       }
+  //     }
+
+  //     // Display the clicked video in expanded mode
+  //     displayFrame.style.display = "block";
+  //     displayFrame.appendChild(clickedElement);
+  //     userIdInDisplayFrame.current = clickedElement.id;
+
+  //     // Resize other videos to small size
+  //     for (let i = 0; i < videoFrames.length; i++) {
+  //       if (videoFrames[i].id !== userIdInDisplayFrame.current) {
+  //         videoFrames[i].style.height = "100px";
+  //         videoFrames[i].style.width = "100px";
+  //       }
+  //     }
+  //   }
+
+  // };
+
+
+  const toggleFullscreen = (e) => {
+    const displayFrame = streamBoxRef.current;
+
+    if (!document.fullscreenElement) {
+
+
+      const videoContainers = document.getElementsByClassName("video__container");
+      for (let container of videoContainers) {
+        container.onclick = toggleFullscreen;
+      }
+
+      // Enter fullscreen
+      if (displayFrame.requestFullscreen) {
+        displayFrame.requestFullscreen();
+      } else if (displayFrame.mozRequestFullScreen) { // For Firefox
+        displayFrame.mozRequestFullScreen();
+      } else if (displayFrame.webkitRequestFullscreen) { // For Chrome, Safari, and Opera
+        displayFrame.webkitRequestFullscreen();
+      } else if (displayFrame.msRequestFullscreen) { // For IE/Edge
+        displayFrame.msRequestFullscreen();
+      }
+    } else {
+
+      const videoContainers = document.getElementsByClassName("video__container");
+      for (let container of videoContainers) {
+        container.onclick = expandVideoFrame;
+      }
+
+      // Exit fullscreen and reset video frame
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          // Reset to small view after exiting fullscreen
+          expandVideoFrame(e);
+        });
+      } else if (document.mozCancelFullScreen) { // For Firefox
+        document.mozCancelFullScreen().then(() => {
+          expandVideoFrame(e);
+        });
+      } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
+        document.webkitExitFullscreen().then(() => {
+          expandVideoFrame(e);
+        });
+      } else if (document.msExitFullscreen) { // For IE/Edge
+        document.msExitFullscreen().then(() => {
+          expandVideoFrame(e);
+        });
+      }
+    }
+  };
+
+
+
+  // const toggleFullscreen = (e) => {
+  //   const displayFrame = streamBoxRef.current;
+
+  //   if (!document.fullscreenElement) {
+  //     // Expanding to fullscreen
+  //     displayFrame.requestFullscreen()
+  //       .then(() => {
+  //         setIsExpanded(true);  // Update state to show fullscreen icon
+  //       })
+  //       .catch((err) => console.error(`Error enabling fullscreen mode: ${err.message}`));
+  //   } else {
+  //     // Exiting fullscreen
+  //     document.exitFullscreen()
+  //       .then(() => {
+  //         setIsExpanded(false);  // Update state to hide fullscreen icon
+  //       })
+  //       .catch((err) => console.error(`Error exiting fullscreen mode: ${err.message}`));
+  //   }
+  // };
+
+
+
+
+  // const toggleFullscreen = (e) => {
+
+  //   const displayFrame = streamBoxRef.current;
+
+  //   if (!document.fullscreenElement) {
+  //     setIsFullscreen(true)
+
+  //     const videoContainers = document.getElementsByClassName("video__container");
+  //     for (let container of videoContainers) {
+  //       container.onclick = toggleFullscreen; // Remove onclick handler
+  //     }
+
+  //     // Enter fullscreen
+  //     if (displayFrame.requestFullscreen) {
+  //       displayFrame.requestFullscreen();
+  //     } else if (displayFrame.mozRequestFullScreen) { // For Firefox
+  //       displayFrame.mozRequestFullScreen();
+  //     } else if (displayFrame.webkitRequestFullscreen) { // For Chrome, Safari, and Opera
+  //       displayFrame.webkitRequestFullscreen();
+  //     } else if (displayFrame.msRequestFullscreen) { // For IE/Edge
+  //       displayFrame.msRequestFullscreen();
+  //     }
+  //   } else {
+  //     setIsFullscreen(false)
+
+  //     const videoContainers = document.getElementsByClassName("video__container");
+  //     for (let container of videoContainers) {
+  //       container.onclick = expandVideoFrame; // Remove onclick handler
+  //     }
+
+  //     // Exit fullscreen and reset video frame
+  //     if (document.exitFullscreen) {
+  //       document.exitFullscreen().then(() => {
+  //         // Reset to small view after exiting fullscreen
+  //         expandVideoFrame(e);
+  //       });
+  //     } else if (document.mozCancelFullScreen) { // For Firefox
+  //       document.mozCancelFullScreen().then(() => {
+  //         expandVideoFrame(e);
+  //       });
+  //     } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
+  //       document.webkitExitFullscreen().then(() => {
+  //         expandVideoFrame(e);
+  //       });
+  //     } else if (document.msExitFullscreen) { // For IE/Edge
+  //       document.msExitFullscreen().then(() => {
+  //         expandVideoFrame(e);
+  //       });
+  //     }
+  //   }
+  // };
+
+
+
   const handleUserLeft = (user) => {
+    console.log("User Left");
+
     delete remoteUsers[user.uid];
     let item = document.getElementById(`user-container-${user.uid}`);
     if (item) {
@@ -687,18 +863,26 @@ const Room = () => {
         <main className="container">
           <div id="room__container" style={{ flexGrow: 1 }}>
             <div id="stream__box" ref={streamBoxRef} style={{ position: 'relative' }}>
-              {isFullscreen ? (
-                <FullscreenExitIcon
-                  onClick={toggleFullscreen}
-                  className="fullscreen-btn"
-                />
-              ) : (
-                <FullscreenIcon
-                  onClick={toggleFullscreen}
-                  className="fullscreen-btn"
-                />
+
+              {isExpanded && ( // Show fullscreen button only in expanded mode
+                <div className="fullscreen-btn-container">
+                  {isFullscreen ? (
+                    <FullscreenExitIcon
+                      onClick={toggleFullscreen}
+                      className="fullscreen-btn"
+                    />
+                  ) : (
+                    <FullscreenIcon
+                      onClick={toggleFullscreen}
+                      className="fullscreen-btn"
+                    />
+                  )}
+                </div>
               )}
+
             </div>
+
+
             <div id="streams__container"></div>
           </div>
         </main>
