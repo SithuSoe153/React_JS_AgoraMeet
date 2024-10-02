@@ -121,42 +121,6 @@ const Room = () => {
 
 
 
-  useEffect(() => {
-    const init = async () => {
-      // Initializing RTC client
-      client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-      // Fetch meeting details, tokens, etc.
-      const meetingDetails = await fetchMeetingDetails();
-
-      // Destructure the meeting details to get rtcToken and channelName
-      const { token: rtcToken, channelName } = meetingDetails;
-      let uid = Math.floor(Math.random() * 10000);
-
-
-      // Join the RTC channel
-      await client.current.join(rtcToken, channelName, null, formattedUid);
-
-      // Event listeners
-      client.current.on("user-published", handleUserPublished);
-      client.current.on("user-left", handleUserLeft);
-
-      setJoined(true);
-      joinStream();
-    };
-
-    init();
-
-    return () => {
-      // Clean up on unmount
-      if (client.current) {
-        client.current.leave();
-      }
-    };
-  }, []);
-
-
-
   const fetchMeetingDetails = async () => {
     try {
       const response = await fetch(
@@ -183,8 +147,52 @@ const Room = () => {
 
 
 
+  // ================ Start
+
+
+  // Keep track of joined users
+  const [joinedUsers, setJoinedUsers] = useState(new Set());
+
+  useEffect(() => {
+    const init = async () => {
+      // Initializing RTC client
+      client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+
+      // Fetch meeting details, tokens, etc.
+      const meetingDetails = await fetchMeetingDetails();
+      const { token: rtcToken, channelName } = meetingDetails;
+
+      // Join the RTC channel
+      await client.current.join(rtcToken, channelName, null, formattedUid);
+
+      // Add the joined user to the set
+      setJoinedUsers(prev => new Set(prev.add(formattedUid)));
+
+      // Event listeners
+      client.current.on("user-published", handleUserPublished);
+      client.current.on("user-left", handleUserLeft);
+
+      // Listen for users joining (without media published)
+      client.current.on("user-joined", handleUserJoined);
+
+      setJoined(true);
+      joinStream();
+    };
+
+    init();
+
+    return () => {
+      // Clean up on unmount
+      if (client.current) {
+        client.current.leave();
+      }
+    };
+  }, []);
 
   const joinStream = async () => {
+    console.log("joinStream function called."); // Check if function is called
+    console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
+
     try {
       let audioTrack, videoTrack;
 
@@ -199,127 +207,156 @@ const Room = () => {
       }
 
       const tracksToPublish = [];
-
-      if (micOn && audioTrack) {
+      if (audioTrack) {
         tracksToPublish.push(audioTrack);
       }
-
-      if (cameraOn && videoTrack) {
+      if (videoTrack) {
         tracksToPublish.push(videoTrack);
       }
 
-      setLocalTracks([audioTrack, videoTrack]);
-
-      // Create player container for local user
-      if (!document.getElementById("user-container-local")) {
-        const player = document.createElement("div");
-        player.className = "video__container";
-        player.id = `user-container-local`;
-        player.onclick = (e) => {
-          expandVideoFrame(e);
-        };
-        player.innerHTML = `
-          <div class="video-player" id="user-local"></div>
-          <div class="video-name">${displayName} (You)</div>
-          <div class="placeholder" id="placeholder-local">Camera is Off</div>
-        `;
-
-        document.getElementById("streams__container").appendChild(player);
+      // Only publish if there are tracks to publish
+      if (tracksToPublish.length > 0) {
+        await client.current.publish(tracksToPublish);
+      } else {
+        console.warn("No tracks to publish."); // This will trigger since both are off
       }
+
+      // Always create the user container
+      const player = document.createElement("div");
+      player.className = "video__container";
+      player.id = `user-container-local`;
+      player.onclick = (e) => {
+        expandVideoFrame(e);
+      };
+
+      // Display the user's name and the state
+      player.innerHTML = `
+        <div class="video-player" id="user-local"></div>
+        <div class="video-name">${displayName} (You)</div>
+        <div class="placeholder" id="placeholder-local">${!micOn && !cameraOn ? "User is in the meeting without audio and video" : "Loading..."}</div>
+      `;
+
+      // Append player container to streams container
+      document.getElementById("streams__container").appendChild(player);
+      console.log("User container created."); // This should now always be logged
 
       const placeholder = document.getElementById("placeholder-local");
       const localContainer = document.getElementById("user-container-local");
-      localContainer.style.display = "block";
+      localContainer.style.display = "block"; // Make sure the container is visible
 
-      // Publish tracks initially
-      await client.current.publish(tracksToPublish);
-
-      // Handle mic state after publishing
-      if (!micOn) {
-        if (audioTrack) {
-          await client.current.unpublish(audioTrack); // Unpublish audio track to stop sending audio
-          audioTrack.stop(); // Stop the audio track to turn off mic
-          audioTrack.close(); // Destroy the track to release resources
-        }
+      // Handle mic and camera state after publishing
+      if (!micOn && audioTrack) {
+        await client.current.unpublish(audioTrack);
+        audioTrack.stop();
+        audioTrack.close();
       }
 
-      // Handle camera state after publishing
-      if (!cameraOn) {
-        if (videoTrack) {
-          await client.current.unpublish(videoTrack); // Unpublish video track to stop sending video
-          videoTrack.stop(); // Stop the video track
-          videoTrack.close(); // Destroy the track to release resources
-        }
-        placeholder.style.display = "block"; // Show placeholder if video is off
+      if (!cameraOn && videoTrack) {
+        await client.current.unpublish(videoTrack);
+        videoTrack.stop();
+        videoTrack.close();
+        placeholder.style.display = "block"; // Show placeholder when camera is off
       } else if (videoTrack) {
         videoTrack.play("user-local");
         placeholder.style.display = "none"; // Hide placeholder if video is available
       }
-
-      // Handle user-published event
-      client.current.on("user-published", handleUserPublished);
 
     } catch (error) {
       console.error("Error joining stream:", error);
     }
   };
 
+  const handleUserJoined = (user) => {
+    console.log(`User joined: ${user.uid}`);
 
+    // Create the user container when they join, even if they haven't published any media yet
+    createUserContainer(user.uid);
 
-
+    // Optionally, display a message to indicate that the user hasn't published any tracks yet
+    const placeholder = document.getElementById(`placeholder-${user.uid}`);
+    placeholder.innerText = "User has joined without audio and video"; // Default message
+    placeholder.style.display = "block"; // Show the placeholder
+  };
 
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
+
+    // Always create the user container when they publish
+    createUserContainer(user.uid);
+
     try {
       await client.current.subscribe(user, mediaType);
-
-      // Create the user container if it doesn't exist
-      let playerContainer = document.getElementById(`user-container-${user.uid}`);
-
-      if (!playerContainer) {
-        const player = document.createElement("div");
-        player.className = "video__container";
-        player.id = `user-container-${user.uid}`;
-        player.onclick = expandVideoFrame; // Assign the click handler
-
-        player.innerHTML = `
- <div class="video-player" id="user-${user.uid}"></div>
- <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
- <div class="placeholder" id="placeholder-${user.uid}" style="display: none;"></div>
- `;
-
-        document.getElementById("streams__container").appendChild(player);
-      }
-
       const placeholder = document.getElementById(`placeholder-${user.uid}`);
-      const hasVideoTrack = user.videoTrack && mediaType === "video";
-      const hasAudioTrack = user.audioTrack && mediaType === "audio";
 
-      // Manage placeholder visibility based on video track
+      const hasVideoTrack = mediaType === "video" && user.videoTrack;
+      const hasAudioTrack = mediaType === "audio" && user.audioTrack;
+
+      // Check if both audio and video tracks are missing
       if (!hasAudioTrack && !hasVideoTrack) {
-        placeholder.style.display = "none";
+        placeholder.innerText = "Camera and Mic are Off"; // Show message when both are off
+        placeholder.style.display = "block"; // Show the placeholder
       } else {
-        if (!hasAudioTrack && !hasVideoTrack) {
-          if (placeholder) {
-            placeholder.style.display = "block";
-            placeholder.innerText = "Camera and Mic are Off";
-            alert(`User ${user.uid} has joined with Camera and Mic OFF!`);
-          }
-        }
-
-        if (hasVideoTrack && !hasAudioTrack) {
-          user.videoTrack.play(`user-${user.uid}`);
-          if (placeholder) placeholder.style.display = "none";
-        }
+        placeholder.style.display = "none"; // Hide placeholder once the user publishes any track
       }
 
+      // Play video track if it exists
+      if (hasVideoTrack) {
+        user.videoTrack.play(`user-${user.uid}`);
+      }
+
+      // Play audio track if it exists
       if (hasAudioTrack) {
         user.audioTrack.play();
       }
+
     } catch (error) {
       console.error(`Error handling user published: ${error}`);
     }
   };
+
+  // Function to create user container
+  const createUserContainer = (uid) => {
+    const playerId = `user-container-${uid}`;
+
+    // Create the user container if it doesn't exist
+    let playerContainer = document.getElementById(playerId);
+    if (!playerContainer) {
+      const player = document.createElement("div");
+      player.className = "video__container";
+      player.id = playerId;
+
+      // Initial message for the user
+      player.innerHTML = `
+        <div class="video-player" id="user-${uid}"></div>
+        <div class="video-name">${uid.replace(/_/g, " ")}</div>
+        <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
+      `;
+
+      document.getElementById("streams__container").appendChild(player);
+      console.log("User container created.");
+    }
+  };
+
+
+
+  const handleUserLeft = (user) => {
+    console.log(`User left: ${user.uid}`);
+    const playerContainer = document.getElementById(`user-container-${user.uid}`);
+    if (playerContainer) {
+      playerContainer.remove();
+    }
+
+    // Update the joined users set
+    setJoinedUsers(prev => {
+      prev.delete(user.uid);
+      return new Set(prev);
+    });
+  };
+
+
+
+  // ================ End
+
 
 
   const expandVideoFrame = (e) => {
@@ -557,15 +594,15 @@ const Room = () => {
 
 
 
-  const handleUserLeft = (user) => {
-    console.log("User Left");
+  // const handleUserLeft = (user) => {
+  //   console.log("User Left");
 
-    delete remoteUsers[user.uid];
-    let item = document.getElementById(`user-container-${user.uid}`);
-    if (item) {
-      item.remove();
-    }
-  };
+  //   delete remoteUsers[user.uid];
+  //   let item = document.getElementById(`user-container-${user.uid}`);
+  //   if (item) {
+  //     item.remove();
+  //   }
+  // };
 
 
 
