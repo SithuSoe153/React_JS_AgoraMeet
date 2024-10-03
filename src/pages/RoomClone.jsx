@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { styled, useTheme } from '@mui/material/styles';
 
@@ -30,7 +30,7 @@ import InfoIcon from "@mui/icons-material/Info";
 
 import "../styles/room.css";
 import GradientIconButton from "../components/Buttons/GradientIconButton"
-import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip } from "@mui/material";
+import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
 const drawerWidth = 400;
@@ -55,17 +55,8 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
   })
 );
 
-const DrawerHeader = styled('div')(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-  justifyContent: 'flex-start',
-}));
-
 
 const Room = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const displayName = sessionStorage.getItem("display_name") || "default_user";
@@ -89,10 +80,8 @@ const Room = () => {
   const [rtcToken, setRtcToken] = useState(null);
   const [channelName, setChannelName] = useState(null);
 
-  const [micOn, setMicOn] = useState(false);
-  const [cameraOn, setCameraOn] = useState(false);
-  // const [micOn, setMicOn] = useState(prevMicOn);
-  // const [cameraOn, setCameraOn] = useState(prevCameraOn);
+  const [micOn, setMicOn] = useState(prevMicOn);
+  const [cameraOn, setCameraOn] = useState(prevCameraOn);
   const [bothOff, setBothOff] = useState(!micOn && !cameraOn); // Track if both are off
 
   const [sharingScreen, setSharingScreen] = useState(false);
@@ -101,9 +90,6 @@ const Room = () => {
 
   const [fullscreen, setFullscreen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const [activeTab, setActiveTab] = useState(''); // Track the active tab, initially empty
 
   const [open, setOpen] = useState(false);
 
@@ -128,109 +114,45 @@ const Room = () => {
 
 
 
-
-  const handleTabChange = (tab) => {
-    if (activeTab === tab && open) {
-      // If the same tab is clicked again, close the drawer and deactivate the icon
-      setOpen(false);
-      setActiveTab(''); // Reset activeTab to deactivate the icon
-    } else {
-      // If a different tab or drawer is closed, open it and set the new active tab
-      setActiveTab(tab);
-      setOpen(true);
-    }
+  const toggleDrawer = () => {
+    setOpen(!open);
   };
 
 
 
-  // useEffect(() => {
-  //   const handleClickOutside = (event) => {
-  //     // Check if the click is outside the drawer and not on any of the tab icons
-  //     if (
-  //       open &&
-  //       !event.target.closest('.MuiDrawer-paper') && 
-  //       !event.target.closest('.drawer-toggle-icon') // Avoid closing if an icon is clicked
-  //     ) {
-  //       setOpen(false);
-  //       setActiveTab(''); // Reset activeTab when closing drawer
-  //     }
-  //   };
+  useEffect(() => {
+    const init = async () => {
+      // Initializing RTC client
+      client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
-  //   if (open) {
-  //     document.addEventListener('mousedown', handleClickOutside);
-  //   }
+      // Fetch meeting details, tokens, etc.
+      const meetingDetails = await fetchMeetingDetails();
 
-  //   return () => {
-  //     document.removeEventListener('mousedown', handleClickOutside);
-  //   };
-  // }, [open]);
+      // Destructure the meeting details to get rtcToken and channelName
+      const { token: rtcToken, channelName } = meetingDetails;
+      let uid = Math.floor(Math.random() * 10000);
 
 
-  const renderDrawerContent = () => {
-    switch (activeTab) {
-      case 'info':
-        return (
-          <Box>
-            <Typography variant="h6" color="white">Information</Typography>
-            <Typography variant="body2" color="white">
-              Display info-related content.
-            </Typography>
-          </Box>
-        );
-      case 'people':
-        return (
-          <Box>
-            <section id="messages__container">
+      // Join the RTC channel
+      await client.current.join(rtcToken, channelName, null, formattedUid);
 
+      // Event listeners
+      client.current.on("user-published", handleUserPublished);
+      client.current.on("user-left", handleUserLeft);
 
+      setJoined(true);
+      joinStream();
+    };
 
-              <div id="member__list">
-                {/* Delete */}
+    init();
 
-                <div class="member__wrapper" id="member__tester__wrapper">
-                  <span class="green__icon"></span>
-                  <p class="member_name">Tester</p>
-                </div>
-                {/* Delete end */}
-
-              </div>
-
-              <div id="member__list">
-
-                {/* Delete */}
-                <div class="member__wrapper" id="member__tester__wrapper">
-                  <span class="green__icon"></span>
-                  <p class="member_name">Tester</p>
-                </div>
-                {/* Delete end */}
-
-              </div>
-
-            </section>
-          </Box>
-        );
-      case 'chat':
-      default:
-        return (
-          <Box>
-            <section id="messages__container">
-              <div id="messages">
-                <div className="message__wrapper">
-                  <div className="message__body">
-                    <strong className="message__author">Sithu Soe</strong>
-                    <p className="message__text">Hii Hello</p>
-                  </div>
-                </div>
-              </div>
-              <form id="message__form">
-                <input type="text" name="message" placeholder="Send a message...." />
-              </form>
-            </section>
-          </Box>
-        );
-    }
-  };
-
+    return () => {
+      // Clean up on unmount
+      if (client.current) {
+        client.current.leave();
+      }
+    };
+  }, []);
 
 
 
@@ -254,252 +176,75 @@ const Room = () => {
       }
     } catch (error) {
       console.error("Error fetching meeting details:", error);
-      Navigate("/lobby")
-      // alert("An error occurred while fetching meeting details and information.");
+      alert("An error occurred while fetching meeting details and information.");
     }
   };
 
 
 
-  // ================ Start
-
-
-  // Keep track of joined users
-  const [joinedUsers, setJoinedUsers] = useState(new Set());
-
-  useEffect(() => {
-    const init = async () => {
-      // Initializing RTC client
-      client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-      // Fetch meeting details, tokens, etc.
-      const meetingDetails = await fetchMeetingDetails();
-      const { token: rtcToken, channelName } = meetingDetails;
-
-      // Join the RTC channel
-      await client.current.join(rtcToken, channelName, null, formattedUid);
-
-      // Add the joined user to the set
-      setJoinedUsers(prev => new Set(prev.add(formattedUid)));
-
-      // Event listeners
-      client.current.on("user-published", handleUserPublished);
-      client.current.on("user-left", handleUserLeft);
-
-      // Listen for users joining (without media published)
-      client.current.on("user-joined", handleUserJoined);
-
-      setJoined(true);
-      joinStream();
-    };
-
-    init();
-
-    return () => {
-      // Clean up on unmount
-      if (client.current) {
-        client.current.leave();
-      }
-    };
-  }, []);
-
-
   const joinStream = async () => {
-    console.log("joinStream function called."); // Check if function is called
-    console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
-
     try {
       let audioTrack, videoTrack;
 
-      // Create audio track only if mic is on
-      if (micOn) {
-        audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      }
+      // Create audio track regardless of initial mic setting
+      // audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
+      audioTrack = await AgoraRTC.createMicrophoneAudioTrack({ muted: !micOn });
 
-      // Create video track only if camera is on
-      if (cameraOn) {
-        videoTrack = await AgoraRTC.createCameraVideoTrack();
-      }
+      // Create video track based on camera setting
+      videoTrack = await AgoraRTC.createCameraVideoTrack({ muted: !cameraOn });
 
-      const tracksToPublish = [];
-      if (audioTrack) {
-        tracksToPublish.push(audioTrack);
-      }
-      if (videoTrack) {
-        tracksToPublish.push(videoTrack);
-      }
+      const tracksToPublish = [audioTrack, videoTrack];
+      setLocalTracks([audioTrack, videoTrack]);
 
-      // Only publish if there are tracks to publish
-      if (tracksToPublish.length > 0) {
-        await client.current.publish(tracksToPublish);
-      } else {
-        console.warn("No tracks to publish."); // This will trigger since both are off
-      }
-
-      // Check if the user container already exists for the local user
-      const playerId = `user-container-local`;
-      const existingPlayer = document.getElementById(playerId);
-
-      if (existingPlayer) {
-        console.log("Local user container already exists. Skipping creation.");
-      } else {
-        // Always create the user container if it doesn't exist
+      // Create player container for local user
+      if (!document.getElementById("user-container-local")) {
         const player = document.createElement("div");
         player.className = "video__container";
-        player.id = playerId;
-        player.onclick = (e) => {
-          expandVideoFrame(e);
-        };
+        player.id = `user-container-local`;
+        player.onclick = expandVideoFrame; // Assign the click handler
 
-        // Display the user's name and the state
         player.innerHTML = `
-          <div class="video-player" id="user-local"></div>
+        <div class="video-player" id="user-local"></div>
           <div class="video-name">${displayName} (You)</div>
-          <div class="placeholder" id="placeholder-local">${!micOn && !cameraOn ? "User is in the meeting without audio and video" : "Loading..."}</div>
-        `;
+        <div class="placeholder" id="placeholder-local">Camera is Off</div>
+ `;
 
-        // Append player container to streams container
         document.getElementById("streams__container").appendChild(player);
-        console.log("Local user container created.");
+
+
       }
 
       const placeholder = document.getElementById("placeholder-local");
-      const localContainer = document.getElementById("user-container-local");
-      localContainer.style.display = "block"; // Make sure the container is visible
 
-      // Handle mic and camera state after publishing
-      if (!micOn && audioTrack) {
-        await client.current.unpublish(audioTrack);
-        audioTrack.stop();
-        audioTrack.close();
+      // Always show the container
+      const localContainer = document.getElementById("user-container-local");
+      localContainer.style.display = "block";
+
+      // Publish tracks initially
+      await client.current.publish(tracksToPublish);
+
+      // Handle mic and camera states after publishing
+      if (!micOn) {
+        await audioTrack.setMuted(true); // Mute audio instead of disabling
       }
 
-      if (!cameraOn && videoTrack) {
-        await client.current.unpublish(videoTrack);
-        videoTrack.stop();
-        videoTrack.close();
-        placeholder.style.display = "block"; // Show placeholder when camera is off
-      } else if (videoTrack) {
+      if (!cameraOn) {
+        await videoTrack.setMuted(true); // Mute video instead of disabling
+        placeholder.style.display = "block"; // Show placeholder if video is off
+      } else {
         videoTrack.play("user-local");
         placeholder.style.display = "none"; // Hide placeholder if video is available
       }
+
+      // Handle user-published event
+      client.current.on("user-published", handleUserPublished);
 
     } catch (error) {
       console.error("Error joining stream:", error);
     }
   };
 
-
-  const handleUserJoined = (user) => {
-    console.log(`User joined: ${user.uid}`);
-
-    // Create the user container when they join, even if they haven't published any media yet
-    createUserContainer(user.uid);
-
-    // Optionally, display a message to indicate that the user hasn't published any tracks yet
-    const placeholder = document.getElementById(`placeholder-${user.uid}`);
-    placeholder.innerText = "User has joined without audio and video"; // Default message
-    placeholder.style.display = "block"; // Show the placeholder
-  };
-
-
-
-  const handleUserPublished = async (user, mediaType) => {
-    console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
-
-    const playerId = `user-container-${user.uid}`;
-
-    // Check if the user container already exists
-    let playerContainer = document.getElementById(playerId);
-    if (!playerContainer) {
-      // Create the container if it doesn't exist
-      createUserContainer(user.uid);
-    } else {
-      console.log(`Container for user ${user.uid} already exists.`);
-    }
-
-    try {
-      await client.current.subscribe(user, mediaType);
-      const placeholder = document.getElementById(`placeholder-${user.uid}`);
-
-      const hasVideoTrack = mediaType === "video" && user.videoTrack;
-      const hasAudioTrack = mediaType === "audio" && user.audioTrack;
-
-      // Check if both audio and video tracks are missing
-      if (!hasAudioTrack && !hasVideoTrack) {
-        placeholder.innerText = "Camera and Mic are Off"; // Show message when both are off
-        placeholder.style.display = "block"; // Show the placeholder
-      } else {
-        placeholder.style.display = "none"; // Hide placeholder once the user publishes any track
-      }
-
-      // Play video track if it exists
-      if (hasVideoTrack) {
-        user.videoTrack.play(`user-${user.uid}`);
-      }
-
-      // Play audio track if it exists
-      if (hasAudioTrack) {
-        user.audioTrack.play();
-      }
-
-    } catch (error) {
-      console.error(`Error handling user published: ${error}`);
-    }
-  };
-
-
-
-  // Function to create user container
-  const createUserContainer = (uid) => {
-    const playerId = `user-container-${uid}`;
-
-    // Check again here if the container exists before creating
-    if (document.getElementById(playerId)) {
-      console.log(`User container for ${uid} already exists, skipping creation.`);
-      return; // Skip creating if it already exists
-    }
-
-    const player = document.createElement("div");
-    player.className = "video__container";
-    player.id = playerId;
-    player.onclick = expandVideoFrame;
-
-    // Initial message for the user
-    player.innerHTML = `
-    <div class="video-player" id="user-${uid}"></div>
-    <div class="video-name">${uid.replace(/_/g, " ")}</div>
-    <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
-  `;
-
-    document.getElementById("streams__container").appendChild(player);
-    console.log("User container created.");
-  };
-
-
-
-  const handleUserLeft = (user) => {
-    console.log(`User left: ${user.uid}`);
-    const playerContainer = document.getElementById(`user-container-${user.uid}`);
-    if (playerContainer) {
-      playerContainer.remove();
-    }
-
-    // Update the joined users set
-    setJoinedUsers(prev => {
-      prev.delete(user.uid);
-      return new Set(prev);
-    });
-  };
-
-
-
-  // ================ End
-
-
-
   const expandVideoFrame = (e) => {
-
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
     const clickedElement = e.currentTarget;
@@ -512,7 +257,6 @@ const Room = () => {
       const originalContainer = document.getElementById("streams__container");
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
-        setIsExpanded(false)
       }
 
       // Reset dimensions for all videos
@@ -520,20 +264,14 @@ const Room = () => {
         videoFrames[i].style.height = ""; // Reset height
         videoFrames[i].style.width = ""; // Reset width
       }
-
-
     } else {
-
       // Remove any current video in display frame if it exists
       if (displayFrame.firstChild) {
         const existingChild = displayFrame.firstChild;
         const originalContainer = document.getElementById("streams__container");
         if (originalContainer && !originalContainer.contains(existingChild)) {
           originalContainer.appendChild(existingChild);
-          // setIsExpanded(true)
-
         }
-
       }
 
       // Display the clicked video in expanded mode
@@ -552,17 +290,11 @@ const Room = () => {
   };
 
 
+
   const toggleFullscreen = (e) => {
     const displayFrame = streamBoxRef.current;
 
     if (!document.fullscreenElement) {
-
-
-      const videoContainers = document.getElementsByClassName("video__container");
-      for (let container of videoContainers) {
-        container.onclick = toggleFullscreen;
-      }
-
       // Enter fullscreen
       if (displayFrame.requestFullscreen) {
         displayFrame.requestFullscreen();
@@ -574,12 +306,6 @@ const Room = () => {
         displayFrame.msRequestFullscreen();
       }
     } else {
-
-      const videoContainers = document.getElementsByClassName("video__container");
-      for (let container of videoContainers) {
-        container.onclick = expandVideoFrame;
-      }
-
       // Exit fullscreen and reset video frame
       if (document.exitFullscreen) {
         document.exitFullscreen().then(() => {
@@ -602,15 +328,68 @@ const Room = () => {
     }
   };
 
-  // const handleUserLeft = (user) => {
-  //   console.log("User Left");
 
-  //   delete remoteUsers[user.uid];
-  //   let item = document.getElementById(`user-container-${user.uid}`);
-  //   if (item) {
-  //     item.remove();
-  //   }
-  // };
+
+  const handleUserPublished = async (user, mediaType) => {
+    console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
+    try {
+      await client.current.subscribe(user, mediaType);
+
+      // Create the user container if it doesn't exist
+      let playerContainer = document.getElementById(`user-container-${user.uid}`);
+
+      if (!playerContainer) {
+        const player = document.createElement("div");
+        player.className = "video__container";
+        player.id = `user-container-${user.uid}`;
+        player.onclick = expandVideoFrame; // Assign the click handler
+
+        player.innerHTML = `
+ <div class="video-player" id="user-${user.uid}"></div>
+ <div class="video-name">${user.uid?.replace(/_/g, " ")}</div>
+ <div class="placeholder" id="placeholder-${user.uid}" style="display: none;"></div>
+ `;
+
+        document.getElementById("streams__container").appendChild(player);
+      }
+
+      const placeholder = document.getElementById(`placeholder-${user.uid}`);
+      const hasVideoTrack = user.videoTrack && mediaType === "video";
+      const hasAudioTrack = user.audioTrack && mediaType === "audio";
+
+      // Manage placeholder visibility based on video track
+      if (!hasAudioTrack && !hasVideoTrack) {
+        placeholder.style.display = "none";
+      } else {
+        if (!hasAudioTrack && !hasVideoTrack) {
+          if (placeholder) {
+            placeholder.style.display = "block";
+            placeholder.innerText = "Camera and Mic are Off";
+            alert(`User ${user.uid} has joined with Camera and Mic OFF!`);
+          }
+        }
+
+        if (hasVideoTrack && !hasAudioTrack) {
+          user.videoTrack.play(`user-${user.uid}`);
+          if (placeholder) placeholder.style.display = "none";
+        }
+      }
+
+      if (hasAudioTrack) {
+        user.audioTrack.play();
+      }
+    } catch (error) {
+      console.error(`Error handling user published: ${error}`);
+    }
+  };
+
+  const handleUserLeft = (user) => {
+    delete remoteUsers[user.uid];
+    let item = document.getElementById(`user-container-${user.uid}`);
+    if (item) {
+      item.remove();
+    }
+  };
 
 
 
@@ -792,6 +571,57 @@ const Room = () => {
     <Box sx={{ display: 'flex' }}>
 
 
+      {/* <header id="nav">
+        <div className="nav--list">
+          <button id="members__button">
+            <svg
+              width="24"
+              height="24"
+              xmlns="http://www.w3.org/2000/svg"
+              fillRule="evenodd"
+              clipRule="evenodd"
+            >
+              <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
+            </svg>
+          </button>
+          <a href="lobby.html">
+            <h3 id="logo">
+              <span>Meet.MyDay</span>
+            </h3>
+          </a>
+        </div>
+
+        <div id="nav__links">
+          <button id="chat__button">
+            <svg
+              width="24"
+              height="24"
+              xmlns="http://www.w3.org/2000/svg"
+              fillRule="evenodd"
+              fill="#ede0e0"
+              clipRule="evenodd"
+            >
+              <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
+            </svg>
+          </button>
+          <a className="nav__link" id="copy__link__btn">
+            Copy Share Link
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              fill="#ede0e0"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
+            </svg>
+          </a>
+        </div>
+      </header> */}
+
+
+
+
       <Box sx={{ flexShrink: 0 }}>
         {/* Control Buttons Section */}
         {joined && (
@@ -820,28 +650,24 @@ const Room = () => {
               {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
             </GradientIconButton>
 
-            <Tooltip title="Coming Soon">
-              <GradientIconButton>
-                <RecordIcon />
-              </GradientIconButton>
-            </Tooltip>
+            <GradientIconButton>
+              <RecordIcon />
+            </GradientIconButton>
+
 
             {/*  */}
 
-            {/* Buttons for selecting tabs */}
-            <GradientIconButton onClick={() => handleTabChange('info')} isSelected={activeTab === 'info'}>
-              {activeTab === 'info' && open ? <InfoIcon /> : <InfoIcon />}
+            <GradientIconButton>
+              <InfoIcon />
             </GradientIconButton>
 
-            <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
-              {activeTab === 'people' && open ? <PeopleAltIcon /> : <PeopleIcon />}
+            <GradientIconButton>
+              <PeopleIcon />
             </GradientIconButton>
 
-            <GradientIconButton onClick={() => handleTabChange('chat')} isSelected={activeTab === 'chat'}>
-              {activeTab === 'chat' && open ? <ChatOffIcon /> : <ChatIcon />}
+            <GradientIconButton onClick={toggleDrawer} isSelected={open}>
+              {open ? <ChatOffIcon /> : <ChatIcon />}
             </GradientIconButton>
-
-
 
 
 
@@ -861,62 +687,77 @@ const Room = () => {
         <main className="container">
           <div id="room__container" style={{ flexGrow: 1 }}>
             <div id="stream__box" ref={streamBoxRef} style={{ position: 'relative' }}>
-
-              {isExpanded && ( // Show fullscreen button only in expanded mode
-                <div className="fullscreen-btn-container">
-                  {isFullscreen ? (
-                    <FullscreenExitIcon
-                      onClick={toggleFullscreen}
-                      className="fullscreen-btn"
-                    />
-                  ) : (
-                    <FullscreenIcon
-                      onClick={toggleFullscreen}
-                      className="fullscreen-btn"
-                    />
-                  )}
-                </div>
+              {isFullscreen ? (
+                <FullscreenExitIcon
+                  onClick={toggleFullscreen}
+                  className="fullscreen-btn"
+                />
+              ) : (
+                <FullscreenIcon
+                  onClick={toggleFullscreen}
+                  className="fullscreen-btn"
+                />
               )}
-
             </div>
-
-
             <div id="streams__container"></div>
           </div>
         </main>
       </Main>
 
 
-      {/* Drawer Component */}
+
+      {/* Persistent Drawer for Participants and Chat Messages */}
       <Drawer
         sx={{
           width: drawerWidth,
-          flexShrink: 0,
+          flexShrink: 0, // Prevent shrinking
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            backgroundColor: '#262625',
+            width: drawerWidth, // Ensure the paper has the correct width
+            transition: theme.transitions.create(['width'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.leavingScreen,
+            }),
           },
         }}
         variant="persistent"
         anchor="right"
         open={open}
       >
-        <DrawerHeader sx={{ backgroundColor: '#262625' }}>
-          <IconButton onClick={() => { setOpen(false); setActiveTab(''); }} sx={{ color: "#fff" }}>
-            {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-          </IconButton>
-          <Typography variant="h6" color="white">
-            {activeTab === 'chat' ? 'In-app Messages' : activeTab === 'info' ? 'Information' : 'Participants'}
-          </Typography>
-        </DrawerHeader>
-        <Divider />
 
-        {/* Drawer Content Based on Active Tab */}
-        <Box sx={{ width: '100%', backgroundColor: '#797a79', height: "100%" }}>
-          {renderDrawerContent()}
+        {/* <DrawerHeader>
+                  <IconButton onClick={toggleDrawer}>
+                  {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                  </IconButton>
+                  </DrawerHeader> */}
+        {/* <Divider /> */}
+        {/* Add any content you want inside the drawer */}
+
+        <Box sx={{ marginTop: "70px" }}>
+          <section id="messages__container">
+
+            <div id="messages">
+              <div className="message__wrapper">
+                <div className="message__body">
+                  <strong className="message__author">Sithu Soe</strong>
+                  <p className="message__text">Hii Hello</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="message__form">
+              <input
+                type="text"
+                name="message"
+                placeholder="Send a message...."
+              />
+            </form>
+          </section>
         </Box>
       </Drawer>
-
 
     </Box >
 
