@@ -320,13 +320,13 @@
     left: 0;
   }
 
-  #messages__container {
+  /* #messages__container {
     max-width: 20rem;
   }
 
   #message__form {
     width: 18.2rem;
-  }
+  } */
 }
 
 @media (max-width: 768px) {

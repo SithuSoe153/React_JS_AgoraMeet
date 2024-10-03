@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import AgoraRTM from "agora-rtm-sdk";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { styled, useTheme } from '@mui/material/styles';
 
@@ -30,7 +30,7 @@ import InfoIcon from "@mui/icons-material/Info";
 
 import "../styles/room.css";
 import GradientIconButton from "../components/Buttons/GradientIconButton"
-import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu } from "@mui/material";
+import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
 const drawerWidth = 400;
@@ -55,8 +55,17 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
   })
 );
 
+const DrawerHeader = styled('div')(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: theme.spacing(0, 1),
+  ...theme.mixins.toolbar,
+  justifyContent: 'flex-start',
+}));
+
 
 const Room = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const displayName = sessionStorage.getItem("display_name") || "default_user";
@@ -92,6 +101,8 @@ const Room = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const [activeTab, setActiveTab] = useState(''); // Track the active tab, initially empty
+
   const [open, setOpen] = useState(false);
 
   const handleDrawerOpen = () => {
@@ -115,9 +126,59 @@ const Room = () => {
 
 
 
-  const toggleDrawer = () => {
-    setOpen(!open);
+  const handleTabChange = (tab) => {
+    if (activeTab === tab && open) {
+      // If the same tab is clicked again, close the drawer
+      setOpen(false);
+    } else {
+      // If a different tab or drawer is closed, open it and set the new active tab
+      setActiveTab(tab);
+      setOpen(true);
+    }
   };
+
+  const renderDrawerContent = () => {
+    switch (activeTab) {
+      case 'info':
+        return (
+          <Box>
+            <Typography variant="h6" color="white">Information</Typography>
+            <Typography variant="body2" color="white">
+              Display info-related content here.
+            </Typography>
+          </Box>
+        );
+      case 'people':
+        return (
+          <Box>
+            <Typography variant="h6" color="white">People</Typography>
+            <Typography variant="body2" color="white">
+              Show the list of people here.
+            </Typography>
+          </Box>
+        );
+      case 'chat':
+      default:
+        return (
+          <Box>
+            <section id="messages__container">
+              <div id="messages">
+                <div className="message__wrapper">
+                  <div className="message__body">
+                    <strong className="message__author">Sithu Soe</strong>
+                    <p className="message__text">Hii Hello</p>
+                  </div>
+                </div>
+              </div>
+              <form id="message__form">
+                <input type="text" name="message" placeholder="Send a message...." />
+              </form>
+            </section>
+          </Box>
+        );
+    }
+  };
+
 
 
 
@@ -141,7 +202,8 @@ const Room = () => {
       }
     } catch (error) {
       console.error("Error fetching meeting details:", error);
-      alert("An error occurred while fetching meeting details and information.");
+      Navigate("/lobby")
+      // alert("An error occurred while fetching meeting details and information.");
     }
   };
 
@@ -189,6 +251,7 @@ const Room = () => {
     };
   }, []);
 
+
   const joinStream = async () => {
     console.log("joinStream function called."); // Check if function is called
     console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
@@ -221,24 +284,32 @@ const Room = () => {
         console.warn("No tracks to publish."); // This will trigger since both are off
       }
 
-      // Always create the user container
-      const player = document.createElement("div");
-      player.className = "video__container";
-      player.id = `user-container-local`;
-      player.onclick = (e) => {
-        expandVideoFrame(e);
-      };
+      // Check if the user container already exists for the local user
+      const playerId = `user-container-local`;
+      const existingPlayer = document.getElementById(playerId);
 
-      // Display the user's name and the state
-      player.innerHTML = `
-        <div class="video-player" id="user-local"></div>
-        <div class="video-name">${displayName} (You)</div>
-        <div class="placeholder" id="placeholder-local">${!micOn && !cameraOn ? "User is in the meeting without audio and video" : "Loading..."}</div>
-      `;
+      if (existingPlayer) {
+        console.log("Local user container already exists. Skipping creation.");
+      } else {
+        // Always create the user container if it doesn't exist
+        const player = document.createElement("div");
+        player.className = "video__container";
+        player.id = playerId;
+        player.onclick = (e) => {
+          expandVideoFrame(e);
+        };
 
-      // Append player container to streams container
-      document.getElementById("streams__container").appendChild(player);
-      console.log("User container created."); // This should now always be logged
+        // Display the user's name and the state
+        player.innerHTML = `
+          <div class="video-player" id="user-local"></div>
+          <div class="video-name">${displayName} (You)</div>
+          <div class="placeholder" id="placeholder-local">${!micOn && !cameraOn ? "User is in the meeting without audio and video" : "Loading..."}</div>
+        `;
+
+        // Append player container to streams container
+        document.getElementById("streams__container").appendChild(player);
+        console.log("Local user container created.");
+      }
 
       const placeholder = document.getElementById("placeholder-local");
       const localContainer = document.getElementById("user-container-local");
@@ -266,6 +337,7 @@ const Room = () => {
     }
   };
 
+
   const handleUserJoined = (user) => {
     console.log(`User joined: ${user.uid}`);
 
@@ -278,11 +350,21 @@ const Room = () => {
     placeholder.style.display = "block"; // Show the placeholder
   };
 
+
+
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
 
-    // Always create the user container when they publish
-    createUserContainer(user.uid);
+    const playerId = `user-container-${user.uid}`;
+
+    // Check if the user container already exists
+    let playerContainer = document.getElementById(playerId);
+    if (!playerContainer) {
+      // Create the container if it doesn't exist
+      createUserContainer(user.uid);
+    } else {
+      console.log(`Container for user ${user.uid} already exists.`);
+    }
 
     try {
       await client.current.subscribe(user, mediaType);
@@ -314,27 +396,32 @@ const Room = () => {
     }
   };
 
+
+
   // Function to create user container
   const createUserContainer = (uid) => {
     const playerId = `user-container-${uid}`;
 
-    // Create the user container if it doesn't exist
-    let playerContainer = document.getElementById(playerId);
-    if (!playerContainer) {
-      const player = document.createElement("div");
-      player.className = "video__container";
-      player.id = playerId;
-
-      // Initial message for the user
-      player.innerHTML = `
-        <div class="video-player" id="user-${uid}"></div>
-        <div class="video-name">${uid.replace(/_/g, " ")}</div>
-        <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
-      `;
-
-      document.getElementById("streams__container").appendChild(player);
-      console.log("User container created.");
+    // Check again here if the container exists before creating
+    if (document.getElementById(playerId)) {
+      console.log(`User container for ${uid} already exists, skipping creation.`);
+      return; // Skip creating if it already exists
     }
+
+    const player = document.createElement("div");
+    player.className = "video__container";
+    player.id = playerId;
+    player.onclick = expandVideoFrame;
+
+    // Initial message for the user
+    player.innerHTML = `
+    <div class="video-player" id="user-${uid}"></div>
+    <div class="video-name">${uid.replace(/_/g, " ")}</div>
+    <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
+  `;
+
+    document.getElementById("streams__container").appendChild(player);
+    console.log("User container created.");
   };
 
 
@@ -373,7 +460,6 @@ const Room = () => {
       const originalContainer = document.getElementById("streams__container");
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
-        // alert("false")
         setIsExpanded(false)
       }
 
@@ -392,6 +478,8 @@ const Room = () => {
         const originalContainer = document.getElementById("streams__container");
         if (originalContainer && !originalContainer.contains(existingChild)) {
           originalContainer.appendChild(existingChild);
+          // setIsExpanded(true)
+
         }
 
       }
@@ -410,59 +498,6 @@ const Room = () => {
       }
     }
   };
-
-
-
-  // const expandVideoFrame = (e) => {
-
-  //   const displayFrame = streamBoxRef.current;
-  //   const videoFrames = document.getElementsByClassName("video__container");
-  //   const clickedElement = e.currentTarget;
-
-  //   if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
-  //     setIsExpanded(false)
-  //     // Reset the display frame and resize all videos back to normal
-  //     displayFrame.style.display = "none";
-
-  //     // Only append if it's not already a child
-  //     const originalContainer = document.getElementById("streams__container");
-  //     if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
-  //       originalContainer.appendChild(clickedElement);
-  //     }
-
-  //     // Reset dimensions for all videos
-  //     for (let i = 0; i < videoFrames.length; i++) {
-  //       videoFrames[i].style.height = ""; // Reset height
-  //       videoFrames[i].style.width = ""; // Reset width
-  //     }
-  //   } else {
-
-  //     setIsExpanded(true)
-
-  //     // Remove any current video in display frame if it exists
-  //     if (displayFrame.firstChild) {
-  //       const existingChild = displayFrame.firstChild;
-  //       const originalContainer = document.getElementById("streams__container");
-  //       if (originalContainer && !originalContainer.contains(existingChild)) {
-  //         originalContainer.appendChild(existingChild);
-  //       }
-  //     }
-
-  //     // Display the clicked video in expanded mode
-  //     displayFrame.style.display = "block";
-  //     displayFrame.appendChild(clickedElement);
-  //     userIdInDisplayFrame.current = clickedElement.id;
-
-  //     // Resize other videos to small size
-  //     for (let i = 0; i < videoFrames.length; i++) {
-  //       if (videoFrames[i].id !== userIdInDisplayFrame.current) {
-  //         videoFrames[i].style.height = "100px";
-  //         videoFrames[i].style.width = "100px";
-  //       }
-  //     }
-  //   }
-
-  // };
 
 
   const toggleFullscreen = (e) => {
@@ -514,85 +549,6 @@ const Room = () => {
       }
     }
   };
-
-
-
-  // const toggleFullscreen = (e) => {
-  //   const displayFrame = streamBoxRef.current;
-
-  //   if (!document.fullscreenElement) {
-  //     // Expanding to fullscreen
-  //     displayFrame.requestFullscreen()
-  //       .then(() => {
-  //         setIsExpanded(true);  // Update state to show fullscreen icon
-  //       })
-  //       .catch((err) => console.error(`Error enabling fullscreen mode: ${err.message}`));
-  //   } else {
-  //     // Exiting fullscreen
-  //     document.exitFullscreen()
-  //       .then(() => {
-  //         setIsExpanded(false);  // Update state to hide fullscreen icon
-  //       })
-  //       .catch((err) => console.error(`Error exiting fullscreen mode: ${err.message}`));
-  //   }
-  // };
-
-
-
-
-  // const toggleFullscreen = (e) => {
-
-  //   const displayFrame = streamBoxRef.current;
-
-  //   if (!document.fullscreenElement) {
-  //     setIsFullscreen(true)
-
-  //     const videoContainers = document.getElementsByClassName("video__container");
-  //     for (let container of videoContainers) {
-  //       container.onclick = toggleFullscreen; // Remove onclick handler
-  //     }
-
-  //     // Enter fullscreen
-  //     if (displayFrame.requestFullscreen) {
-  //       displayFrame.requestFullscreen();
-  //     } else if (displayFrame.mozRequestFullScreen) { // For Firefox
-  //       displayFrame.mozRequestFullScreen();
-  //     } else if (displayFrame.webkitRequestFullscreen) { // For Chrome, Safari, and Opera
-  //       displayFrame.webkitRequestFullscreen();
-  //     } else if (displayFrame.msRequestFullscreen) { // For IE/Edge
-  //       displayFrame.msRequestFullscreen();
-  //     }
-  //   } else {
-  //     setIsFullscreen(false)
-
-  //     const videoContainers = document.getElementsByClassName("video__container");
-  //     for (let container of videoContainers) {
-  //       container.onclick = expandVideoFrame; // Remove onclick handler
-  //     }
-
-  //     // Exit fullscreen and reset video frame
-  //     if (document.exitFullscreen) {
-  //       document.exitFullscreen().then(() => {
-  //         // Reset to small view after exiting fullscreen
-  //         expandVideoFrame(e);
-  //       });
-  //     } else if (document.mozCancelFullScreen) { // For Firefox
-  //       document.mozCancelFullScreen().then(() => {
-  //         expandVideoFrame(e);
-  //       });
-  //     } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
-  //       document.webkitExitFullscreen().then(() => {
-  //         expandVideoFrame(e);
-  //       });
-  //     } else if (document.msExitFullscreen) { // For IE/Edge
-  //       document.msExitFullscreen().then(() => {
-  //         expandVideoFrame(e);
-  //       });
-  //     }
-  //   }
-  // };
-
-
 
   // const handleUserLeft = (user) => {
   //   console.log("User Left");
@@ -784,57 +740,6 @@ const Room = () => {
     <Box sx={{ display: 'flex' }}>
 
 
-      {/* <header id="nav">
-        <div className="nav--list">
-          <button id="members__button">
-            <svg
-              width="24"
-              height="24"
-              xmlns="http://www.w3.org/2000/svg"
-              fillRule="evenodd"
-              clipRule="evenodd"
-            >
-              <path d="M24 19h-24v-1h24v1zm0-6h-24v-1h24v1zm0-6h-24v-1h24v1z" />
-            </svg>
-          </button>
-          <a href="lobby.html">
-            <h3 id="logo">
-              <span>Meet.MyDay</span>
-            </h3>
-          </a>
-        </div>
-
-        <div id="nav__links">
-          <button id="chat__button">
-            <svg
-              width="24"
-              height="24"
-              xmlns="http://www.w3.org/2000/svg"
-              fillRule="evenodd"
-              fill="#ede0e0"
-              clipRule="evenodd"
-            >
-              <path d="M24 20h-3v4l-5.333-4h-7.667v-4h2v2h6.333l2.667 2v-2h3v-8.001h-2v-2h4v12.001zm-15.667-6l-5.333 4v-4h-3v-14.001l18 .001v14h-9.667zm-6.333-2h3v2l2.667-2h8.333v-10l-14-.001v10.001z" />
-            </svg>
-          </button>
-          <a className="nav__link" id="copy__link__btn">
-            Copy Share Link
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              fill="#ede0e0"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6 13h-5v5h-2v-5h-5v-2h5v-5h2v5h5v2z" />
-            </svg>
-          </a>
-        </div>
-      </header> */}
-
-
-
-
       <Box sx={{ flexShrink: 0 }}>
         {/* Control Buttons Section */}
         {joined && (
@@ -863,24 +768,28 @@ const Room = () => {
               {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
             </GradientIconButton>
 
-            <GradientIconButton>
-              <RecordIcon />
-            </GradientIconButton>
-
+            <Tooltip title="Coming Soon">
+              <GradientIconButton>
+                <RecordIcon />
+              </GradientIconButton>
+            </Tooltip>
 
             {/*  */}
 
-            <GradientIconButton>
-              <InfoIcon />
+            {/* Buttons for selecting tabs */}
+            <GradientIconButton onClick={() => handleTabChange('info')} isSelected={activeTab === 'info'}>
+              {activeTab === 'info' && open ? <ChatOffIcon /> : <InfoIcon />}
             </GradientIconButton>
 
-            <GradientIconButton>
-              <PeopleIcon />
+            <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
+              {activeTab === 'people' && open ? <ChatOffIcon /> : <PeopleIcon />}
             </GradientIconButton>
 
-            <GradientIconButton onClick={toggleDrawer} isSelected={open}>
-              {open ? <ChatOffIcon /> : <ChatIcon />}
+            <GradientIconButton onClick={() => handleTabChange('chat')} isSelected={activeTab === 'chat'}>
+              {activeTab === 'chat' && open ? <ChatOffIcon /> : <ChatIcon />}
             </GradientIconButton>
+
+
 
 
 
@@ -926,59 +835,36 @@ const Room = () => {
       </Main>
 
 
-
-      {/* Persistent Drawer for Participants and Chat Messages */}
+      {/* Drawer Component */}
       <Drawer
         sx={{
           width: drawerWidth,
-          flexShrink: 0, // Prevent shrinking
-          transition: theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
+          flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: drawerWidth, // Ensure the paper has the correct width
-            transition: theme.transitions.create(['width'], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
+            width: drawerWidth,
+            backgroundColor: '#262625',
           },
         }}
         variant="persistent"
         anchor="right"
         open={open}
       >
+        <DrawerHeader sx={{ backgroundColor: '#262625' }}>
+          <IconButton onClick={() => setOpen(false)} sx={{ color: "#fff" }}>
+            {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+          </IconButton>
+          <Typography variant="h6" color="white">
+            {activeTab === 'chat' ? 'In-app Messages' : activeTab === 'info' ? 'Information' : 'People'}
+          </Typography>
+        </DrawerHeader>
+        <Divider />
 
-        {/* <DrawerHeader>
-                  <IconButton onClick={toggleDrawer}>
-                  {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-                  </IconButton>
-                  </DrawerHeader> */}
-        {/* <Divider /> */}
-        {/* Add any content you want inside the drawer */}
-
-        <Box sx={{ marginTop: "70px" }}>
-          <section id="messages__container">
-
-            <div id="messages">
-              <div className="message__wrapper">
-                <div className="message__body">
-                  <strong className="message__author">Sithu Soe</strong>
-                  <p className="message__text">Hii Hello</p>
-                </div>
-              </div>
-            </div>
-
-            <form id="message__form">
-              <input
-                type="text"
-                name="message"
-                placeholder="Send a message...."
-              />
-            </form>
-          </section>
+        {/* Drawer Content Based on Active Tab */}
+        <Box sx={{ width: '100%', backgroundColor: '#797a79', height: "100%" }}>
+          {renderDrawerContent()}
         </Box>
       </Drawer>
+
 
     </Box >
 
