@@ -126,16 +126,42 @@ const Room = () => {
 
 
 
+
   const handleTabChange = (tab) => {
     if (activeTab === tab && open) {
-      // If the same tab is clicked again, close the drawer
+      // Close the drawer if the same tab is clicked again
       setOpen(false);
+      setActiveTab('');
     } else {
-      // If a different tab or drawer is closed, open it and set the new active tab
+      // Open the drawer and set the active tab
       setActiveTab(tab);
       setOpen(true);
     }
   };
+
+
+  // useEffect(() => {
+  //   const handleClickOutside = (event) => {
+  //     // Check if the click is outside the drawer and not on any of the tab icons
+  //     if (
+  //       open &&
+  //       !event.target.closest('.MuiDrawer-paper') && 
+  //       !event.target.closest('.drawer-toggle-icon') // Avoid closing if an icon is clicked
+  //     ) {
+  //       setOpen(false);
+  //       setActiveTab(''); // Reset activeTab when closing drawer
+  //     }
+  //   };
+  
+  //   if (open) {
+  //     document.addEventListener('mousedown', handleClickOutside);
+  //   }
+  
+  //   return () => {
+  //     document.removeEventListener('mousedown', handleClickOutside);
+  //   };
+  // }, [open]);
+  
 
   const renderDrawerContent = () => {
     switch (activeTab) {
