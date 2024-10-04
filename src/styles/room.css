@@ -75,8 +75,8 @@
   background-color: #262625;
   border-right: 1px solid #797a79;
   overflow-y: auto;
-  width: 90%;
-  max-width: 250px;
+  width: 100%;
+  /* max-width: 250px; */
   position: fixed;
   height: 100%;
   z-index: 999;
@@ -105,7 +105,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.5rem;
+  padding: 1rem;
 }
 
 .members__list::-webkit-scrollbar {
@@ -134,7 +134,7 @@
 }
 
 #messages__container {
-  height: 100vh;
+  height: 90vh;
   background-color: #262625;
   right: 0;
   position: absolute;
@@ -299,9 +299,9 @@
 }
 
 @media (max-width: 1200px) {
-  #members__container {
+  /* #members__container {
     display: none;
-  }
+  } */
 
   #members__button {
     display: block;

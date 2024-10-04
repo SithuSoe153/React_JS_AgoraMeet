@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import AgoraRTC from "agora-rtc-sdk-ng";
-import AgoraRTM from "agora-rtm-sdk";
+// import AgoraRTM from "agora-rtm-sdk";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { styled, useTheme } from '@mui/material/styles';
@@ -33,6 +33,7 @@ import GradientIconButton from "../components/Buttons/GradientIconButton"
 import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
+const appId = '19547e2b1603452688a040cc0a219aea';
 const drawerWidth = 400;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })(
@@ -105,7 +106,17 @@ const Room = () => {
 
   const [activeTab, setActiveTab] = useState(''); // Track the active tab, initially empty
 
+  const [messages, setMessages] = useState([]);
+  const [messageText, setMessageText] = useState('');
+  const [rtmClient, setRtmClient] = useState(null);
+  const [channel, setChannel] = useState(null);
+
   const [open, setOpen] = useState(false);
+
+
+  const [members, setMembers] = useState([]);
+
+
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -118,12 +129,69 @@ const Room = () => {
 
   // const drawerWidth = 400;
 
+
+
+  // Fetch RTM token
+  const getRtmToken = async (chatUserName) => {
+    try {
+      const response = await fetch(
+        `https://dev.gigagates.com/social-commerce-backend/v1/agora/generateRtmToken?userId=${chatUserName}&expirationInSeconds=86400000`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const rtmToken = await response.text();
+      if (response.ok) {
+        console.log('RTM token:', rtmToken);
+
+        return rtmToken;
+      } else {
+        console.error('Failed to fetch RTM token:', response);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching RTM token:', error);
+      return null;
+    }
+  };
+
+
+  let addBotMessageToDom = (botMessage) => {
+    // Select only the messages section for chat
+    let messagesWrapper = document.querySelector("#chat_messages");
+
+    // Return early if there's no valid chat section
+    if (!messagesWrapper) return;
+
+    let newMessage = `
+      <div class="message__wrapper">
+        <div class="message__body__bot">
+          <strong class="message__author__bot">🤖 Meet.MyDay Bot</strong>
+          <p class="message__text__bot">${botMessage}</p>
+        </div>
+      </div>`;
+
+    messagesWrapper.insertAdjacentHTML("beforeend", newMessage);
+
+    let lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
+    if (lastMessage) {
+      lastMessage.scrollIntoView();
+    }
+  };
+
+
+
+
+
+
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
   const client = useRef(null);
-  const rtmClient = useRef(null);
-  const channel = useRef(null);
   const APP_ID = "19547e2b1603452688a040cc0a219aea";
 
 
@@ -138,6 +206,17 @@ const Room = () => {
       // If a different tab or drawer is closed, open it and set the new active tab
       setActiveTab(tab);
       setOpen(true);
+    }
+  };
+
+
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (messageText.trim() && channel) {
+      await channel.sendMessage({ text: messageText });
+      setMessages((prevMessages) => [...prevMessages, { text: messageText, senderId: 'You' }]);
+      setMessageText('');
     }
   };
 
@@ -166,6 +245,15 @@ const Room = () => {
   // }, [open]);
 
 
+  useEffect(() => {
+    // Scroll to the latest message when the messages array is updated
+    const lastMessage = document.querySelector("#messages .message__wrapper:last-child");
+    if (lastMessage) {
+      lastMessage.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]); // The effect runs every time 'messages' changes
+
+
   const renderDrawerContent = () => {
     switch (activeTab) {
       case 'info':
@@ -180,32 +268,8 @@ const Room = () => {
       case 'people':
         return (
           <Box>
-            <section id="messages__container">
-
-
-
-              <div id="member__list">
-                {/* Delete */}
-
-                <div class="member__wrapper" id="member__tester__wrapper">
-                  <span class="green__icon"></span>
-                  <p class="member_name">Tester</p>
-                </div>
-                {/* Delete end */}
-
-              </div>
-
-              <div id="member__list">
-
-                {/* Delete */}
-                <div class="member__wrapper" id="member__tester__wrapper">
-                  <span class="green__icon"></span>
-                  <p class="member_name">Tester</p>
-                </div>
-                {/* Delete end */}
-
-              </div>
-
+            <section id="members__container">
+              <div id="member__list"></div>
             </section>
           </Box>
         );
@@ -214,22 +278,32 @@ const Room = () => {
         return (
           <Box>
             <section id="messages__container">
-              <div id="messages">
-                <div className="message__wrapper">
-                  <div className="message__body">
-                    <strong className="message__author">Sithu Soe</strong>
-                    <p className="message__text">Hii Hello</p>
+              <div id="chat_messages"> {/* Changed ID here */}
+                {messages.map((msg, index) => (
+                  <div key={index} className="message__wrapper">
+                    <div className="message__body">
+                      <strong className="message__author">{msg.senderId}</strong>
+                      <p className="message__text">{msg.text}</p>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-              <form id="message__form">
-                <input type="text" name="message" placeholder="Send a message...." />
+              <form id="message__form" onSubmit={sendMessage}>
+                <input
+                  type="text"
+                  name="message"
+                  placeholder="Send a message..."
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                />
               </form>
             </section>
           </Box>
         );
+
     }
   };
+
 
 
 
@@ -266,6 +340,53 @@ const Room = () => {
 
   // Keep track of joined users
   const [joinedUsers, setJoinedUsers] = useState(new Set());
+
+
+
+  // Initialize RTM when component mounts
+  useEffect(() => {
+
+    const initRTM = async () => {
+
+      const chatUserName = displayName; // Replace with the actual user name
+      const token = await getRtmToken(chatUserName);
+
+      if (!token) {
+        console.error('RTM token is missing.');
+        return;
+      }
+
+      // Access AgoraRTM from window object
+      const client = window.AgoraRTM.createInstance(appId);
+      await client.login({ token, uid: chatUserName });
+      setRtmClient(client);
+
+      const rtmChannel = client.createChannel('general');
+      await rtmChannel.join();
+      setChannel(rtmChannel);
+
+      rtmChannel.on('ChannelMessage', ({ text }, senderId) => {
+        setMessages((prevMessages) => [...prevMessages, { text, senderId }]);
+      });
+    };
+
+    initRTM();
+
+
+    // Cleanup on unmount
+    return () => {
+      if (channel) {
+        channel.leave();
+      }
+      if (rtmClient) {
+        rtmClient.logout();
+      }
+    };
+  }, []);
+
+
+
+
 
   useEffect(() => {
     const init = async () => {
@@ -390,7 +511,12 @@ const Room = () => {
   };
 
 
-  const handleUserJoined = (user) => {
+
+  const handleUserJoined = async (user) => {
+    let formattedUid = user.uid.replace(/_/g, " ");
+
+    // Display bot message welcoming the user
+    addBotMessageToDom(`Welcome to the room ${formattedUid}! 👋`);
     console.log(`User joined: ${user.uid}`);
 
     // Create the user container when they join, even if they haven't published any media yet
@@ -400,7 +526,52 @@ const Room = () => {
     const placeholder = document.getElementById(`placeholder-${user.uid}`);
     placeholder.innerText = "User has joined without audio and video"; // Default message
     placeholder.style.display = "block"; // Show the placeholder
+
+    // Add member to DOM
+    if (activeTab === 'people' && open) {
+    }
+    await addMemberToDom(user.uid);
+    // Get the members in the channel and update the total member count
+    // let members = await channel.getMembers();
+    // updateMemberTotal(members);    
+
   };
+
+
+  let addMemberToDom = async (MemberId) => {
+
+    let formattedUid = MemberId.replace(/_/g, " ");
+    let name = formattedUid || MemberId; // Fallback to MemberId if name is undefined
+
+    if (name === undefined) {
+      console.warn(`Name attribute is not defined for user: ${MemberId}`);
+    }
+
+    let membersWrapper = document.getElementById("member__list");
+    let memberItem = `
+      <div class="member__wrapper" id="member__${MemberId}__wrapper">
+        <span class="green__icon"></span>
+        <p class="member_name">${name}</p>
+      </div>`;
+
+    membersWrapper.insertAdjacentHTML("beforeend", memberItem);
+  };
+
+
+  let updateMemberTotal = async (members) => {
+    let total = document.getElementById("members__count");
+    total.innerText = members.length;
+  };
+
+
+  let getMembers = async () => {
+    let members = await channel.getMembers();
+    updateMemberTotal(members);
+    for (let i = 0; members.length > i; i++) {
+      addMemberToDom(members[i]);
+    }
+  };
+
 
 
 
@@ -901,7 +1072,7 @@ const Room = () => {
         anchor="right"
         open={open}
       >
-        <DrawerHeader sx={{ backgroundColor: '#262625' }}>
+        <DrawerHeader sx={{ backgroundColor: '#262625', position: 'sticky', top: 0, zIndex: 1 }}>
           <IconButton onClick={() => { setOpen(false); setActiveTab(''); }} sx={{ color: "#fff" }}>
             {theme.direction === 'rtl' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
           </IconButton>
@@ -915,6 +1086,7 @@ const Room = () => {
         <Box sx={{ width: '100%', backgroundColor: '#797a79', height: "100%" }}>
           {renderDrawerContent()}
         </Box>
+
       </Drawer>
 
 
