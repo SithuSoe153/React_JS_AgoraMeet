@@ -30,7 +30,7 @@ import InfoIcon from "@mui/icons-material/Info";
 
 import "../styles/room.css";
 import GradientIconButton from "../components/Buttons/GradientIconButton"
-import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip } from "@mui/material";
+import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip, Alert } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
 const appId = '19547e2b1603452688a040cc0a219aea';
@@ -254,15 +254,66 @@ const Room = () => {
   }, [messages]); // The effect runs every time 'messages' changes
 
 
+
+
+  // 
+
+  const [currentLink, setCurrentLink] = useState('');
+  const [alertVisible, setAlertVisible] = useState(false);
+
+
+  useEffect(() => {
+    // Get the current URL and replace 'room' with 'lobby'
+    const url = window.location.href;
+    const modifiedLink = url.replace('room', 'lobby');
+    setCurrentLink(modifiedLink);
+  }, []);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(currentLink)
+      .then(() => {
+        console.log('Link copied to clipboard!');
+        setAlertVisible(true); // Show the alert when the link is copied
+
+        // Hide the alert after 2 seconds
+        setTimeout(() => {
+          setAlertVisible(false);
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+
+
+
   const renderDrawerContent = () => {
     switch (activeTab) {
       case 'info':
         return (
-          <Box>
-            <Typography variant="h6" color="white">Information</Typography>
-            <Typography variant="body2" color="white">
-              Display info-related content.
+          <Box sx={{ padding: 2, backgroundColor: '#262625', height: '100%' }}>
+            <Typography variant="h6" color="white">Copy link to share with other users</Typography>
+            <Typography variant="body2" color="white" sx={{ marginTop: 2, marginBottom: 1 }}>
+              {currentLink}
             </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={copyToClipboard}
+              sx={{ marginTop: 1 }}
+            >
+              Copy Link
+            </Button>
+
+            {/* Alert for link copied confirmation */}
+            {alertVisible && (
+              <Alert
+                severity="success"
+                sx={{ marginTop: 2 }}
+              >
+                Link copied to clipboard!
+              </Alert>
+            )}
           </Box>
         );
       case 'people':
@@ -554,7 +605,7 @@ const Room = () => {
         <p class="member_name">${name}</p>
       </div>`;
 
-    membersWrapper.insertAdjacentHTML("beforeend", memberItem);
+    // membersWrapper.insertAdjacentHTML("beforeend", memberItem);
   };
 
 
@@ -684,7 +735,9 @@ const Room = () => {
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
         setIsExpanded(false)
+
       }
+      console.log("Not Expanded");
 
       // Reset dimensions for all videos
       for (let i = 0; i < videoFrames.length; i++) {
@@ -695,17 +748,15 @@ const Room = () => {
 
     } else {
 
-      // Remove any current video in display frame if it exists
+      // Check if the display frame already has a video
       if (displayFrame.firstChild) {
-        const existingChild = displayFrame.firstChild;
-        const originalContainer = document.getElementById("streams__container");
-        if (originalContainer && !originalContainer.contains(existingChild)) {
-          originalContainer.appendChild(existingChild);
-          // setIsExpanded(true)
-
-        }
-
+        // If a video is already displayed, do nothing and return
+        console.log("Video is already expanded. Click to view is disabled.");
+        return; // Exit the function if already expanded
       }
+
+      console.log("Expanded");
+      setIsExpanded(true);
 
       // Display the clicked video in expanded mode
       displayFrame.style.display = "block";
@@ -735,6 +786,7 @@ const Room = () => {
       }
 
       // Enter fullscreen
+      setIsFullscreen(true);
       if (displayFrame.requestFullscreen) {
         displayFrame.requestFullscreen();
       } else if (displayFrame.mozRequestFullScreen) { // For Firefox
@@ -752,6 +804,7 @@ const Room = () => {
       }
 
       // Exit fullscreen and reset video frame
+      setIsFullscreen(false);
       if (document.exitFullscreen) {
         document.exitFullscreen().then(() => {
           // Reset to small view after exiting fullscreen
@@ -890,13 +943,16 @@ const Room = () => {
         localTracks[1].stop();
         await client.current.unpublish([localTracks[1]]);
 
-        // Recreate the camera track
-        const cameraTrack = await AgoraRTC.createCameraVideoTrack();
-        setLocalTracks((prevTracks) => [prevTracks[0], cameraTrack]);
+        if (cameraOn) {
 
-        // Publish the camera track again
-        await client.current.publish([cameraTrack]);
-        cameraTrack.play("user-local");
+          // Recreate the camera track
+          const cameraTrack = await AgoraRTC.createCameraVideoTrack();
+          setLocalTracks((prevTracks) => [prevTracks[0], cameraTrack]);
+
+          // Publish the camera track again
+          await client.current.publish([cameraTrack]);
+          cameraTrack.play("user-local");
+        }
 
         setSharingScreen(false);
       } catch (error) {
@@ -972,10 +1028,13 @@ const Room = () => {
               justifyContent: 'center',
               gap: '16px',
               backgroundColor: '#1a1a1a', // Example background to separate it visually
+              // backgroundColor: 'black', // Example background to separate it visually
               padding: '16px',
               position: 'fixed', // Fix it at the top/bottom or as required
               bottom: 0, // If you want it at the bottom
               width: '100%',
+              zIndex: 1000, // Ensure it's above other elements
+              borderTop: '1px solid #444', // Optional: Add a border to separate it visually
             }}
           >
 
@@ -991,7 +1050,7 @@ const Room = () => {
               {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
             </GradientIconButton>
 
-            <Tooltip title="Coming Soon">
+            <Tooltip title="Recording Coming Soon">
               <GradientIconButton>
                 <RecordIcon />
               </GradientIconButton>
@@ -1004,9 +1063,9 @@ const Room = () => {
               {activeTab === 'info' && open ? <InfoIcon /> : <InfoIcon />}
             </GradientIconButton>
 
-            <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
+            {/* <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
               {activeTab === 'people' && open ? <PeopleAltIcon /> : <PeopleIcon />}
-            </GradientIconButton>
+            </GradientIconButton> */}
 
             <GradientIconButton onClick={() => handleTabChange('chat')} isSelected={activeTab === 'chat'}>
               {activeTab === 'chat' && open ? <ChatOffIcon /> : <ChatIcon />}
@@ -1032,6 +1091,7 @@ const Room = () => {
         <main className="container">
           <div id="room__container" style={{ flexGrow: 1 }}>
             <div id="stream__box" ref={streamBoxRef} style={{ position: 'relative' }}>
+
 
               {isExpanded && ( // Show fullscreen button only in expanded mode
                 <div className="fullscreen-btn-container">
