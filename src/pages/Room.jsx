@@ -33,6 +33,8 @@ import GradientIconButton from "../components/Buttons/GradientIconButton"
 import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
+import LeaveMeetingOverlay from '../components/LeaveMeetingOverlay';
+
 const appId = '19547e2b1603452688a040cc0a219aea';
 const drawerWidth = 400;
 
@@ -997,14 +999,11 @@ const Room = () => {
     window.location.href = `/lobby?room=${meetingGuid}`;
   };
 
+
+
   // Function to rejoin the meeting
   const rejoinMeeting = async () => {
-    try {
-      setLeftMeeting(false); // Reset the flag
-      await joinStream(); // Rejoin the stream
-    } catch (error) {
-      console.error("Error rejoining the meeting:", error);
-    }
+    window.location.reload();
   };
 
 
@@ -1124,50 +1123,10 @@ const Room = () => {
 
 
 
-            {!leftMeeting ? (
-              <Button onClick={leaveStream} variant="contained" color="error">
-                Leave
-              </Button>
-            ) : (
 
-
-              <Box
-                sx={{
-                  position: 'fixed',   // Fix to viewport
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)', // Semi-transparent background
-                  display: 'flex',     // Use flexbox
-                  flexDirection: 'column', // Arrange items in a column
-                  justifyContent: 'center', // Center vertically
-                  alignItems: 'center', // Center horizontally
-                  color: 'white',      // Text color
-                  zIndex: 9999,       // Ensure it's on top
-                }}
-              >
-                <Typography variant="h6">You have left the meeting</Typography>
-                <Button
-                  onClick={() => navigateToLobby(meetingGuid)}
-                  variant="contained"
-                  color="primary"
-                  sx={{ mt: 2 }} // Add some margin-top
-                >
-                  Go to Lobby
-                </Button>
-                <Button
-                  onClick={rejoinMeeting}
-                  variant="contained"
-                  color="secondary"
-                  sx={{ mt: 1 }} // Add some margin-top
-                >
-                  Rejoin
-                </Button>
-              </Box>
-
-
-            )}
+            <Button onClick={leaveStream} variant="contained" color="error">
+              Leave
+            </Button>
 
 
 
@@ -1239,6 +1198,15 @@ const Room = () => {
         </Box>
 
       </Drawer>
+
+
+      {leftMeeting && (
+        <LeaveMeetingOverlay
+          meetingGuid={meetingGuid}
+          onRejoin={rejoinMeeting}
+          onNavigateToLobby={navigateToLobby}
+        />
+      )}
 
 
     </Box >
