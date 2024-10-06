@@ -30,7 +30,7 @@ import InfoIcon from "@mui/icons-material/Info";
 
 import "../styles/room.css";
 import GradientIconButton from "../components/Buttons/GradientIconButton"
-import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip, Alert } from "@mui/material";
+import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Menu, Tooltip, Alert, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 import MuiAppBar from '@mui/material/AppBar';
 
 const appId = '19547e2b1603452688a040cc0a219aea';
@@ -115,6 +115,8 @@ const Room = () => {
 
 
   const [members, setMembers] = useState([]);
+
+  const [showLeaveOptions, setShowLeaveOptions] = useState(false);
 
 
 
@@ -701,6 +703,7 @@ const Room = () => {
 
 
   const handleUserLeft = (user) => {
+    addBotMessageToDom(`${user.uid.replace(/_/g, " ")} has left the meeting.`);
     console.log(`User left: ${user.uid}`);
     const playerContainer = document.getElementById(`user-container-${user.uid}`);
     if (playerContainer) {
@@ -905,11 +908,33 @@ const Room = () => {
 
 
 
+
   const toggleScreen = async () => {
     if (!sharingScreen) {
       try {
         // Create screen track for sharing
         const screenTracks = await AgoraRTC.createScreenVideoTrack();
+
+        // Listen for the event when the screen share is stopped by the browser
+        screenTracks.on('track-ended', async () => {
+          console.log('Screen sharing stopped by the user via the browser.');
+
+          // Stop the screen track and unpublish it
+          screenTracks.stop(); // Stop screen capture in the browser
+          await client.current.unpublish([screenTracks]); // Unpublish the screen track
+
+          // Reset the screen sharing state in your app
+          setSharingScreen(false);
+
+          // Optionally, switch back to the camera if the camera was on
+          if (cameraOn) {
+            const cameraTrack = await AgoraRTC.createCameraVideoTrack();
+            setLocalTracks((prevTracks) => [prevTracks[0], cameraTrack]);
+
+            await client.current.publish([cameraTrack]); // Re-publish the camera track
+            cameraTrack.play("user-local");
+          }
+        });
 
         // Unpublish the current camera track before switching
         if (localTracks[1]) {
@@ -940,11 +965,14 @@ const Room = () => {
     } else {
       try {
         // Stop screen sharing and switch back to the camera
-        localTracks[1].stop();
-        await client.current.unpublish([localTracks[1]]);
+        localTracks[1].stop(); // Stop sending screen frames
+        await client.current.unpublish([localTracks[1]]); // Unpublish the screen track
+        localTracks[1].close(); // Close the track and stop screen sharing
+
+        // Stop the screen capture in the browser
+        localTracks[1].stop(); // This line ensures the browser stops showing the "sharing" alert
 
         if (cameraOn) {
-
           // Recreate the camera track
           const cameraTrack = await AgoraRTC.createCameraVideoTrack();
           setLocalTracks((prevTracks) => [prevTracks[0], cameraTrack]);
@@ -963,11 +991,26 @@ const Room = () => {
 
 
 
-  const handleRejoin = () => {
-    // Logic for rejoining the stream
-    setJoined(true);
-    setLeftMeeting(false); // Reset when rejoining
+
+  // Navigate to the lobby URL with meeting GUID
+  const navigateToLobby = (meetingGuid) => {
+    window.location.href = `/lobby?room=${meetingGuid}`;
   };
+
+  // Function to rejoin the meeting
+  const rejoinMeeting = async () => {
+    try {
+      setLeftMeeting(false); // Reset the flag
+      await joinStream(); // Rejoin the stream
+    } catch (error) {
+      console.error("Error rejoining the meeting:", error);
+    }
+  };
+
+
+
+
+
 
   const leaveStream = async () => {
     try {
@@ -989,7 +1032,7 @@ const Room = () => {
       setLocalTracks([]);
       setJoined(false);
       setSharingScreen(false);
-      setLeftMeeting(true);
+      setLeftMeeting(true); // Set flag to display rejoin/lobby buttons
 
       // Leave the Agora RTC client
       await client.current.leave();
@@ -997,6 +1040,9 @@ const Room = () => {
       console.error("Error leaving the stream:", error);
     }
   };
+
+
+
 
 
   const switchToCamera = async () => {
@@ -1075,13 +1121,58 @@ const Room = () => {
 
 
 
-            <Button
-              onClick={leaveStream}
-              variant="contained"
-              color="error"
-            >
-              Leave
-            </Button>
+
+
+
+            {!leftMeeting ? (
+              <Button onClick={leaveStream} variant="contained" color="error">
+                Leave
+              </Button>
+            ) : (
+
+
+              <Box
+                sx={{
+                  position: 'fixed',   // Fix to viewport
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)', // Semi-transparent background
+                  display: 'flex',     // Use flexbox
+                  flexDirection: 'column', // Arrange items in a column
+                  justifyContent: 'center', // Center vertically
+                  alignItems: 'center', // Center horizontally
+                  color: 'white',      // Text color
+                  zIndex: 9999,       // Ensure it's on top
+                }}
+              >
+                <Typography variant="h6">You have left the meeting</Typography>
+                <Button
+                  onClick={() => navigateToLobby(meetingGuid)}
+                  variant="contained"
+                  color="primary"
+                  sx={{ mt: 2 }} // Add some margin-top
+                >
+                  Go to Lobby
+                </Button>
+                <Button
+                  onClick={rejoinMeeting}
+                  variant="contained"
+                  color="secondary"
+                  sx={{ mt: 1 }} // Add some margin-top
+                >
+                  Rejoin
+                </Button>
+              </Box>
+
+
+            )}
+
+
+
+
+
           </Box>
         )}
       </Box>
