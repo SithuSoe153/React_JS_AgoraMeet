@@ -460,6 +460,7 @@ const Room = () => {
 
       // Event listeners
       client.current.on("user-published", handleUserPublished);
+      client.current.on("user-unpublished", handleUserUnpublished);
       client.current.on("user-left", handleUserLeft);
 
       // Listen for users joining (without media published)
@@ -662,6 +663,12 @@ const Room = () => {
       // Play video track if it exists
       if (hasVideoTrack) {
         user.videoTrack.play(`user-${user.uid}`);
+
+        // Automatically expand the video when a video track is published
+        const clickedElement = document.getElementById(playerId);
+        if (clickedElement) {
+          expandVideoFrame({ currentTarget: clickedElement }); // Trigger expandVideoFrame
+        }
       }
 
       // Play audio track if it exists
@@ -673,6 +680,36 @@ const Room = () => {
       console.error(`Error handling user published: ${error}`);
     }
   };
+
+  // Handle when the user stops publishing 
+  const handleUserUnpublished = async (user, mediaType) => {
+    console.log(`User unpublished: ${user.uid}, MediaType: ${mediaType}`);
+
+    if (mediaType === "video") {
+      // If the video is unpublished, collapse the expanded video
+      if (isExpanded && userIdInDisplayFrame.current === `user-container-${user.uid}`) {
+        console.log("Collapsing video frame as the user stopped sharing.");
+        const displayFrame = streamBoxRef.current;
+        displayFrame.style.display = "none"; // Hide the display frame
+        setIsExpanded(false);
+
+        // Reset the layout of all other videos
+        const videoFrames = document.getElementsByClassName("video__container");
+        for (let i = 0; i < videoFrames.length; i++) {
+          videoFrames[i].style.height = ""; // Reset height
+          videoFrames[i].style.width = ""; // Reset width
+        }
+
+
+        // Optionally, remove the user's video container if no longer needed
+        const playerContainer = document.getElementById(`user-container-${user.uid}`);
+        if (playerContainer) {
+          playerContainer.remove();
+        }
+      }
+    }
+  };
+
 
 
 
@@ -704,29 +741,51 @@ const Room = () => {
 
 
 
+  // Handle when a user leaves the meeting
   const handleUserLeft = (user) => {
-    addBotMessageToDom(`${user.uid.replace(/_/g, " ")} has left the meeting.`);
     console.log(`User left: ${user.uid}`);
+
+    // If the user in the expanded frame left, collapse the expanded video
+    if (isExpanded && userIdInDisplayFrame.current === `user-container-${user.uid}`) {
+      console.log("Collapsing video frame as the user who left was in expanded mode.");
+      const displayFrame = streamBoxRef.current;
+      displayFrame.style.display = "none"; // Hide the display frame
+      setIsExpanded(false); // Update the expanded state
+      userIdInDisplayFrame.current = null; // Clear the current expanded user reference
+
+      // Reset the layout of all other videos
+      const videoFrames = document.getElementsByClassName("video__container");
+      for (let i = 0; i < videoFrames.length; i++) {
+        videoFrames[i].style.height = ""; // Reset height
+        videoFrames[i].style.width = ""; // Reset width
+      }
+    }
+
+    // Remove the user's video container
     const playerContainer = document.getElementById(`user-container-${user.uid}`);
+
+    expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+
+
     if (playerContainer) {
       playerContainer.remove();
     }
 
     // Update the joined users set
-    setJoinedUsers(prev => {
+    setJoinedUsers((prev) => {
       prev.delete(user.uid);
       return new Set(prev);
     });
   };
 
 
-
   // ================ End
 
 
 
-  const expandVideoFrame = (e) => {
 
+  // Function to expand/collapse video frames
+  const expandVideoFrame = (e) => {
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
     const clickedElement = e.currentTarget;
@@ -739,9 +798,9 @@ const Room = () => {
       const originalContainer = document.getElementById("streams__container");
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
-        setIsExpanded(false)
-
+        setIsExpanded(false);
       }
+
       console.log("Not Expanded");
 
       // Reset dimensions for all videos
@@ -749,22 +808,10 @@ const Room = () => {
         videoFrames[i].style.height = ""; // Reset height
         videoFrames[i].style.width = ""; // Reset width
       }
-
-
     } else {
-
-      // Check if the display frame already has a video
-      if (displayFrame.firstChild) {
-        // If a video is already displayed, do nothing and return
-        console.log("Video is already expanded. Click to view is disabled.");
-        return; // Exit the function if already expanded
-      }
-
       console.log("Expanded");
       setIsExpanded(true);
-
-      // Display the clicked video in expanded mode
-      displayFrame.style.display = "block";
+      displayFrame.style.display = "block"; // Show the expanded frame
       displayFrame.appendChild(clickedElement);
       userIdInDisplayFrame.current = clickedElement.id;
 
@@ -777,6 +824,8 @@ const Room = () => {
       }
     }
   };
+
+
 
 
   const toggleFullscreen = (e) => {
@@ -910,7 +959,6 @@ const Room = () => {
 
 
 
-
   const toggleScreen = async () => {
     if (!sharingScreen) {
       try {
@@ -925,7 +973,7 @@ const Room = () => {
           screenTracks.stop(); // Stop screen capture in the browser
           await client.current.unpublish([screenTracks]); // Unpublish the screen track
 
-          // Reset the screen sharing state in your app
+          // Reset the screen sharing state
           setSharingScreen(false);
 
           // Optionally, switch back to the camera if the camera was on
@@ -936,6 +984,9 @@ const Room = () => {
             await client.current.publish([cameraTrack]); // Re-publish the camera track
             cameraTrack.play("user-local");
           }
+
+          // Collapse the expanded screen once sharing stops
+          setIsExpanded(false);
         });
 
         // Unpublish the current camera track before switching
@@ -950,7 +1001,7 @@ const Room = () => {
         setLocalTracks((prevTracks) => [prevTracks[0], screenTracks]);
         setSharingScreen(true);
 
-        // Display screen share in the local container
+        // Automatically expand the screen share to full size when sharing starts
         let screenContainer = document.getElementById("user-container-local");
         if (!screenContainer) {
           const screenPlayer = `
@@ -960,6 +1011,14 @@ const Room = () => {
           document.getElementById("streams__container").insertAdjacentHTML("beforeend", screenPlayer);
         }
         screenTracks.play("user-local");
+
+        // Trigger the expandVideoFrame function to expand the screen share video
+        const displayFrame = streamBoxRef.current; // Reference the stream container
+
+        if (!isExpanded) {
+          const screenElement = document.getElementById("user-container-local");
+          expandVideoFrame({ currentTarget: screenElement }); // Pass the screen container for expansion
+        }
 
       } catch (error) {
         console.error("Error starting screen share:", error);
@@ -971,9 +1030,6 @@ const Room = () => {
         await client.current.unpublish([localTracks[1]]); // Unpublish the screen track
         localTracks[1].close(); // Close the track and stop screen sharing
 
-        // Stop the screen capture in the browser
-        localTracks[1].stop(); // This line ensures the browser stops showing the "sharing" alert
-
         if (cameraOn) {
           // Recreate the camera track
           const cameraTrack = await AgoraRTC.createCameraVideoTrack();
@@ -984,7 +1040,16 @@ const Room = () => {
           cameraTrack.play("user-local");
         }
 
+        // Collapse the expanded screen once screen sharing is stopped
+        setIsExpanded(false);
         setSharingScreen(false);
+
+        if (isExpanded) {
+          const screenElement = document.getElementById("user-container-local");
+          expandVideoFrame({ currentTarget: screenElement }); // Pass the screen container for expansion
+        }
+
+
       } catch (error) {
         console.error("Error stopping screen share:", error);
       }
