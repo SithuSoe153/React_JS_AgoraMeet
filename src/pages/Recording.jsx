@@ -452,9 +452,6 @@ const Room = () => {
       const meetingDetails = await fetchMeetingDetails();
       const { token: rtcToken, channelName } = meetingDetails;
 
-      console.log("checker", formattedUid);
-
-
       // Join the RTC channel
       await client.current.join(rtcToken, channelName, null, formattedUid);
 
@@ -470,7 +467,7 @@ const Room = () => {
       client.current.on("user-joined", handleUserJoined);
 
       setJoined(true);
-      joinStream();
+      // joinStream();
     };
 
     init();
@@ -488,11 +485,6 @@ const Room = () => {
     console.log("joinStream function called."); // Check if function is called
     console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
 
-    if (displayName === "default_user") {
-      console.log("Hitter");
-
-      return;
-    }
 
     try {
       let audioTrack, videoTrack;
@@ -578,13 +570,6 @@ const Room = () => {
 
 
   const handleUserJoined = async (user) => {
-
-    if (displayName === "default_user") {
-      console.log("Hitter");
-
-      return;
-    }
-
 
     let formattedUid = user.uid.replace(/_/g, " ");
 
@@ -683,9 +668,66 @@ const Room = () => {
 
         // Automatically expand the video when a video track is published
         const clickedElement = document.getElementById(playerId);
-        if (clickedElement) {
-          expandVideoFrame({ currentTarget: clickedElement }); // Trigger expandVideoFrame
+        try {
+          await client.current.subscribe(user, mediaType);
+          const placeholder = document.getElementById(`placeholder-${user.uid}`);
+
+          const hasVideoTrack = mediaType === "video" && user.videoTrack;
+          const hasAudioTrack = mediaType === "audio" && user.audioTrack;
+
+          // Check if both audio and video tracks are missing
+          if (!hasAudioTrack && !hasVideoTrack) {
+            placeholder.innerText = "Camera and Mic are Off"; // Show message when both are off
+            placeholder.style.display = "block"; // Show the placeholder
+          } else {
+            placeholder.style.display = "none"; // Hide placeholder once the user publishes any track
+          }
+
+          // Play video track if it exists
+          if (hasVideoTrack) {
+            user.videoTrack.play(`user-${user.uid}`);
+
+            // Automatically expand the video when a video track is published
+            const clickedElement = document.getElementById(playerId);
+            if (clickedElement) {
+              expandVideoFrame({ currentTarget: clickedElement }); // Trigger expandVideoFrame
+
+              // Automatically enter full-screen mode
+              const videoElement = document.getElementById(`user-${user.uid}`);
+              console.log("Checker", videoElement);
+              
+              if (videoElement) {
+                if (videoElement.requestFullscreen) {
+                  videoElement.requestFullscreen().catch(err => {
+                    console.error("Failed to enter full-screen mode:", err);
+                  });
+                } else if (videoElement.mozRequestFullScreen) { // Firefox
+                  videoElement.mozRequestFullScreen().catch(err => {
+                    console.error("Failed to enter full-screen mode:", err);
+                  });
+                } else if (videoElement.webkitRequestFullscreen) { // Chrome, Safari, Opera
+                  videoElement.webkitRequestFullscreen().catch(err => {
+                    console.error("Failed to enter full-screen mode:", err);
+                  });
+                } else if (videoElement.msRequestFullscreen) { // IE/Edge
+                  videoElement.msRequestFullscreen().catch(err => {
+                    console.error("Failed to enter full-screen mode:", err);
+                  });
+                }
+              }
+            }
+
+          }
+
+          // Play audio track if it exists
+          if (hasAudioTrack) {
+            user.audioTrack.play();
+          }
+
+        } catch (error) {
+          console.error(`Error handling user published: ${error}`);
         }
+
       }
 
       // Play audio track if it exists
@@ -1153,79 +1195,6 @@ const Room = () => {
 
 
     <Box sx={{ display: 'flex' }}>
-
-
-      <Box sx={{ flexShrink: 0 }}>
-        {/* Control Buttons Section */}
-        {joined && (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '16px',
-              backgroundColor: '#1a1a1a', // Example background to separate it visually
-              // backgroundColor: 'black', // Example background to separate it visually
-              padding: '16px',
-              position: 'fixed', // Fix it at the top/bottom or as required
-              bottom: 0, // If you want it at the bottom
-              width: '100%',
-              zIndex: 1000, // Ensure it's above other elements
-              borderTop: '1px solid #444', // Optional: Add a border to separate it visually
-            }}
-          >
-
-            <GradientIconButton onClick={toggleMic} isSelected={micOn}>
-              {micOn ? <MicIcon /> : <MicOffIcon />}
-            </GradientIconButton>
-
-            <GradientIconButton onClick={toggleCamera} isSelected={cameraOn}>
-              {cameraOn ? <VideocamIcon /> : <VideocamOffIcon />}
-            </GradientIconButton>
-
-            <GradientIconButton onClick={toggleScreen} isSelected={sharingScreen}>
-              {sharingScreen ? <StopScreenShareIcon /> : <ScreenShareIcon />}
-            </GradientIconButton>
-
-            <Tooltip title="Recording Coming Soon">
-              <GradientIconButton>
-                <RecordIcon />
-              </GradientIconButton>
-            </Tooltip>
-
-            {/*  */}
-
-            {/* Buttons for selecting tabs */}
-            <GradientIconButton onClick={() => handleTabChange('info')} isSelected={activeTab === 'info'}>
-              {activeTab === 'info' && open ? <InfoIcon /> : <InfoIcon />}
-            </GradientIconButton>
-
-            {/* <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
-              {activeTab === 'people' && open ? <PeopleAltIcon /> : <PeopleIcon />}
-            </GradientIconButton> */}
-
-            <GradientIconButton onClick={() => handleTabChange('chat')} isSelected={activeTab === 'chat'}>
-              {activeTab === 'chat' && open ? <ChatOffIcon /> : <ChatIcon />}
-            </GradientIconButton>
-
-
-
-
-
-
-
-
-
-            <Button onClick={leaveStream} variant="contained" color="error">
-              Leave
-            </Button>
-
-
-
-
-
-          </Box>
-        )}
-      </Box>
 
 
       <Main open={open}>

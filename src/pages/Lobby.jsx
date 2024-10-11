@@ -28,8 +28,11 @@ const Lobby = () => {
     if (!rtcChannelName && !roomId) {
       navigate("/");
     }
-    fetchUserBrief();
+    if (!roomId) {
+      fetchUserBrief();
+    }
   }, []);
+
 
   const fetchUserBrief = async () => {
     const accessToken = sessionStorage.getItem("access_token");
@@ -95,7 +98,7 @@ const Lobby = () => {
   };
 
   const handleJoinMeeting = () => {
-    navigate(`/room?room=${roomId}`, { state: {prevMicOn, prevCameraOn } });
+    navigate(`/room?room=${roomId}`, { state: { prevMicOn, prevCameraOn } });
   };
 
   return (
@@ -168,7 +171,7 @@ const Lobby = () => {
                 />
               </div>
 
-              {!roomId && (
+              {!roomId ? (
                 <>
                   <div className="form__field__wrapper">
                     <label>Meeting Title</label>
@@ -210,21 +213,25 @@ const Lobby = () => {
                     </button>
                   </div>
                 </>
-              )}
+              )
+                :
 
-              <div className="form__field__wrapper">
-                <button type="submit">
-                  Go to Room
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
-                  </svg>
-                </button>
-              </div>
+                <div className="form__field__wrapper">
+                  <button type="submit">
+                    Go to Room
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M13.025 1l-2.847 2.828 6.176 6.176h-16.354v3.992h16.354l-6.176 6.176 2.847 2.828 10.975-11z" />
+                    </svg>
+                  </button>
+                </div>
+
+              }
+
             </form>
           </div>
         </main>
