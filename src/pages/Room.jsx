@@ -379,7 +379,7 @@ const Room = () => {
         };
       } else {
         console.error("Failed to fetch meeting details:", data);
-        alert("Failed to fetch meeting details and information.");
+        alert("Failed to fetch meeting details and information because of meeting host account deleted or not exist.");
       }
     } catch (error) {
       console.error("Error fetching meeting details:", error);
@@ -578,13 +578,10 @@ const Room = () => {
 
 
   const handleUserJoined = async (user) => {
-
     if (displayName === "default_user") {
       console.log("Hitter");
-
       return;
     }
-
 
     let formattedUid = user.uid.replace(/_/g, " ");
 
@@ -600,15 +597,19 @@ const Room = () => {
     placeholder.innerText = "User has joined without audio and video"; // Default message
     placeholder.style.display = "block"; // Show the placeholder
 
+    // Resize the user container if already in expanded mode
+    const playerContainer = document.getElementById(`user-container-${user.uid}`);
+    if (playerContainer && isExpanded) {
+      playerContainer.style.height = "100px";
+      playerContainer.style.width = "100px";
+    }
+
     // Add member to DOM
     if (activeTab === 'people' && open) {
+      await addMemberToDom(user.uid);
     }
-    await addMemberToDom(user.uid);
-    // Get the members in the channel and update the total member count
-    // let members = await channel.getMembers();
-    // updateMemberTotal(members);    
-
   };
+
 
 
   let addMemberToDom = async (MemberId) => {
@@ -683,6 +684,7 @@ const Room = () => {
 
         // Automatically expand the video when a video track is published
         const clickedElement = document.getElementById(playerId);
+        
         if (clickedElement) {
           expandVideoFrame({ currentTarget: clickedElement }); // Trigger expandVideoFrame
         }
@@ -697,6 +699,8 @@ const Room = () => {
       console.error(`Error handling user published: ${error}`);
     }
   };
+
+
 
   // Handle when the user stops publishing 
   const handleUserUnpublished = async (user, mediaType) => {
@@ -781,9 +785,25 @@ const Room = () => {
     // Remove the user's video container
     const playerContainer = document.getElementById(`user-container-${user.uid}`);
 
-    expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+    const streamBox = document.getElementById("stream__box");
+
+    if (streamBox) {
+      const computedStyle = window.getComputedStyle(streamBox);
+      const displayValue = computedStyle.display;
+
+      if (displayValue === "block") {
+        console.log("stream__box is displayed as block, expanding the video frame");
+
+        if (playerContainer) {
+          expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+        }
+      } else {
+        console.log("stream__box is not in block display mode");
+      }
+    }
 
 
+    
     if (playerContainer) {
       playerContainer.remove();
     }
@@ -802,7 +822,9 @@ const Room = () => {
 
 
   // Function to expand/collapse video frames
+
   const expandVideoFrame = (e) => {
+
     const displayFrame = streamBoxRef.current;
     const videoFrames = document.getElementsByClassName("video__container");
     const clickedElement = e.currentTarget;
@@ -815,9 +837,9 @@ const Room = () => {
       const originalContainer = document.getElementById("streams__container");
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
-        setIsExpanded(false);
-      }
+        setIsExpanded(false)
 
+      }
       console.log("Not Expanded");
 
       // Reset dimensions for all videos
@@ -825,10 +847,22 @@ const Room = () => {
         videoFrames[i].style.height = ""; // Reset height
         videoFrames[i].style.width = ""; // Reset width
       }
+
+
     } else {
+
+      // Check if the display frame already has a video
+      if (displayFrame.firstChild) {
+        // If a video is already displayed, do nothing and return
+        console.log("Video is already expanded. Click to view is disabled.");
+        return; // Exit the function if already expanded
+      }
+
       console.log("Expanded");
       setIsExpanded(true);
-      displayFrame.style.display = "block"; // Show the expanded frame
+
+      // Display the clicked video in expanded mode
+      displayFrame.style.display = "block";
       displayFrame.appendChild(clickedElement);
       userIdInDisplayFrame.current = clickedElement.id;
 
@@ -841,7 +875,6 @@ const Room = () => {
       }
     }
   };
-
 
 
 
