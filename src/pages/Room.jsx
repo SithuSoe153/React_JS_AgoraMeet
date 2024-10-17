@@ -488,11 +488,11 @@ const Room = () => {
     console.log("joinStream function called."); // Check if function is called
     console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
 
-    if (displayName === "default_user") {
-      console.log("Hitter");
+    // if (displayName === "default_user") {
+    //   console.log("Hitter");
 
-      return;
-    }
+    //   return;
+    // }
 
     try {
       let audioTrack, videoTrack;
@@ -578,10 +578,10 @@ const Room = () => {
 
 
   const handleUserJoined = async (user) => {
-    if (displayName === "default_user") {
-      console.log("Hitter");
-      return;
-    }
+    // if (displayName === "default_user") {
+    //   console.log("Hitter");
+    //   return;
+    // }
 
     let formattedUid = user.uid.replace(/_/g, " ");
 
@@ -684,10 +684,21 @@ const Room = () => {
 
         // Automatically expand the video when a video track is published
         const clickedElement = document.getElementById(playerId);
-        
+
         if (clickedElement) {
-          expandVideoFrame({ currentTarget: clickedElement }); // Trigger expandVideoFrame
+          const computedStyle = window.getComputedStyle(clickedElement);
+          const displayValue = computedStyle.display;
+
+          if (displayValue === "none") {
+            console.log("stream__box is displayed as block, expanding the video frame");
+
+            if (playerContainer) {
+              expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+            }
+          }
         }
+
+
       }
 
       // Play audio track if it exists
@@ -803,7 +814,7 @@ const Room = () => {
     }
 
 
-    
+
     if (playerContainer) {
       playerContainer.remove();
     }
