@@ -34,6 +34,7 @@ import { Box, Button, Drawer, IconButton, Typography, Divider, CssBaseline, List
 import MuiAppBar from '@mui/material/AppBar';
 
 import LeaveMeetingOverlay from '../components/LeaveMeetingOverlay';
+import UserContainer from "../components/UserContainers/UserContainer";
 
 const appId = '19547e2b1603452688a040cc0a219aea';
 const drawerWidth = 400;
@@ -119,6 +120,8 @@ const Room = () => {
   const [members, setMembers] = useState([]);
 
   const [showLeaveOptions, setShowLeaveOptions] = useState(false);
+
+  const [users, setUsers] = useState([]);
 
 
 
@@ -484,91 +487,39 @@ const Room = () => {
   }, []);
 
 
+
+
   const joinStream = async () => {
-    console.log("joinStream function called."); // Check if function is called
-    console.log("micOn:", micOn, "cameraOn:", cameraOn); // Check mic and camera states
-
-    // if (displayName === "default_user") {
-    //   console.log("Hitter");
-
-    //   return;
-    // }
+    console.log("joinStream function called.");
+    console.log("micOn:", micOn, "cameraOn:", cameraOn);
 
     try {
       let audioTrack, videoTrack;
 
-      // Create audio track only if mic is on
       if (micOn) {
         audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
       }
 
-      // Create video track only if camera is on
       if (cameraOn) {
         videoTrack = await AgoraRTC.createCameraVideoTrack();
       }
 
-      const tracksToPublish = [];
-      if (audioTrack) {
-        tracksToPublish.push(audioTrack);
-      }
-      if (videoTrack) {
-        tracksToPublish.push(videoTrack);
-      }
+      const tracksToPublish = [audioTrack, videoTrack].filter(Boolean);
 
-      // Only publish if there are tracks to publish
       if (tracksToPublish.length > 0) {
         await client.current.publish(tracksToPublish);
       } else {
-        console.warn("No tracks to publish."); // This will trigger since both are off
+        console.warn("No tracks to publish.");
       }
 
-      // Check if the user container already exists for the local user
-      const playerId = `user-container-local`;
-      const existingPlayer = document.getElementById(playerId);
+      const newUser = {
+        uid: 'local', // Use a unique identifier for the local user
+        displayName: displayName,
+        micOn: micOn,
+        cameraOn: cameraOn,
+      };
 
-      if (existingPlayer) {
-        console.log("Local user container already exists. Skipping creation.");
-      } else {
-        // Always create the user container if it doesn't exist
-        const player = document.createElement("div");
-        player.className = "video__container";
-        player.id = playerId;
-        player.onclick = (e) => {
-          expandVideoFrame(e);
-        };
-
-        // Display the user's name and the state
-        player.innerHTML = `
-          <div class="video-player" id="user-local"></div>
-          <div class="video-name">${displayName} (You)</div>
-          <div class="placeholder" id="placeholder-local">${!micOn && !cameraOn ? "User is in the meeting without audio and video" : "Loading..."}</div>
-        `;
-
-        // Append player container to streams container
-        document.getElementById("streams__container").appendChild(player);
-        console.log("Local user container created.");
-      }
-
-      const placeholder = document.getElementById("placeholder-local");
-      const localContainer = document.getElementById("user-container-local");
-      localContainer.style.display = "block"; // Make sure the container is visible
-
-      // Handle mic and camera state after publishing
-      if (!micOn && audioTrack) {
-        await client.current.unpublish(audioTrack);
-        audioTrack.stop();
-        audioTrack.close();
-      }
-
-      if (!cameraOn && videoTrack) {
-        await client.current.unpublish(videoTrack);
-        videoTrack.stop();
-        videoTrack.close();
-        placeholder.style.display = "block"; // Show placeholder when camera is off
-      } else if (videoTrack) {
-        videoTrack.play("user-local");
-        placeholder.style.display = "none"; // Hide placeholder if video is available
-      }
+      setUsers((prevUsers) => [...prevUsers, newUser]);
 
     } catch (error) {
       console.error("Error joining stream:", error);
@@ -577,38 +528,42 @@ const Room = () => {
 
 
 
-  const handleUserJoined = async (user) => {
-    // if (displayName === "default_user") {
-    //   console.log("Hitter");
-    //   return;
-    // }
-
-    let formattedUid = user.uid.replace(/_/g, " ");
+  const handleUserJoined = (user) => {
+    const formattedUid = user.uid.replace(/_/g, " ");
 
     // Display bot message welcoming the user
     addBotMessageToDom(`Welcome to the room ${formattedUid}! 👋`);
     console.log(`User joined: ${user.uid}`);
 
-    // Create the user container when they join, even if they haven't published any media yet
-    createUserContainer(user.uid);
+    setUsers((prevUsers) => {
+      const userIndex = prevUsers.findIndex((u) => u.uid === user.uid);
 
-    // Optionally, display a message to indicate that the user hasn't published any tracks yet
-    const placeholder = document.getElementById(`placeholder-${user.uid}`);
-    placeholder.innerText = "User has joined without audio and video"; // Default message
-    placeholder.style.display = "block"; // Show the placeholder
+      if (userIndex !== -1) {
+        // If the user already exists, update their info
+        const updatedUser = {
+          ...prevUsers[userIndex],
+          micOn: false,
+          cameraOn: false,
+        };
+        return [
+          ...prevUsers.slice(0, userIndex),
+          updatedUser,
+          ...prevUsers.slice(userIndex + 1),
+        ];
+      }
 
-    // Resize the user container if already in expanded mode
-    const playerContainer = document.getElementById(`user-container-${user.uid}`);
-    if (playerContainer && isExpanded) {
-      playerContainer.style.height = "100px";
-      playerContainer.style.width = "100px";
-    }
+      // Otherwise, add the new user
+      const newUser = {
+        uid: user.uid,
+        displayName: formattedUid,
+        micOn: false,
+        cameraOn: false,
+      };
 
-    // Add member to DOM
-    if (activeTab === 'people' && open) {
-      await addMemberToDom(user.uid);
-    }
+      return [...prevUsers, newUser];
+    });
   };
+
 
 
 
@@ -648,60 +603,31 @@ const Room = () => {
 
 
 
-
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
 
-    const playerId = `user-container-${user.uid}`;
-
-    // Check if the user container already exists
-    let playerContainer = document.getElementById(playerId);
-    if (!playerContainer) {
-      // Create the container if it doesn't exist
-      createUserContainer(user.uid);
-    } else {
-      console.log(`Container for user ${user.uid} already exists.`);
-    }
+    // Ensure the user exists before trying to update
+    setUsers((prevUsers) => {
+      return prevUsers.map((u) =>
+        u.uid === user.uid
+          ? {
+            ...u,
+            micOn: mediaType === "audio" && user.audioTrack ? true : u.micOn,
+            cameraOn: mediaType === "video" && user.videoTrack ? true : u.cameraOn,
+          }
+          : u
+      );
+    });
 
     try {
       await client.current.subscribe(user, mediaType);
-      const placeholder = document.getElementById(`placeholder-${user.uid}`);
-
       const hasVideoTrack = mediaType === "video" && user.videoTrack;
       const hasAudioTrack = mediaType === "audio" && user.audioTrack;
 
-      // Check if both audio and video tracks are missing
-      if (!hasAudioTrack && !hasVideoTrack) {
-        placeholder.innerText = "Camera and Mic are Off"; // Show message when both are off
-        placeholder.style.display = "block"; // Show the placeholder
-      } else {
-        placeholder.style.display = "none"; // Hide placeholder once the user publishes any track
-      }
-
-      // Play video track if it exists
       if (hasVideoTrack) {
         user.videoTrack.play(`user-${user.uid}`);
-
-        // Automatically expand the video when a video track is published
-        const clickedElement = document.getElementById(playerId);
-
-        if (clickedElement) {
-          const computedStyle = window.getComputedStyle(clickedElement);
-          const displayValue = computedStyle.display;
-
-          if (displayValue === "none") {
-            console.log("stream__box is displayed as block, expanding the video frame");
-
-            if (playerContainer) {
-              expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
-            }
-          }
-        }
-
-
       }
 
-      // Play audio track if it exists
       if (hasAudioTrack) {
         user.audioTrack.play();
       }
@@ -713,11 +639,13 @@ const Room = () => {
 
 
 
+
+
   // Handle when the user stops publishing 
   const handleUserUnpublished = async (user, mediaType) => {
     console.log(`User unpublished: ${user.uid}, MediaType: ${mediaType}`);
 
-    if (mediaType === "video") {
+    if (mediaType === "toggle") {
       // If the video is unpublished, collapse the expanded video
       if (isExpanded && userIdInDisplayFrame.current === `user-container-${user.uid}`) {
         console.log("Collapsing video frame as the user stopped sharing.");
@@ -765,6 +693,15 @@ const Room = () => {
     <div class="video-player" id="user-${uid}"></div>
     <div class="video-name">${uid.replace(/_/g, " ")}</div>
     <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
+
+    <div class="status-icons" id="status-icons-${uid}">
+      <span id="camera-status-${uid}" class="camera-status">📷</span>
+      <span id="mic-status-${uid}" class="mic-status">🎤</span>
+      <span id="camera-status-${uid}" class="camera-status">🔇</span>
+
+    </div>
+
+
   `;
 
     document.getElementById("streams__container").appendChild(player);
@@ -833,40 +770,40 @@ const Room = () => {
 
 
   // Function to expand/collapse video frames
-
   const expandVideoFrame = (e) => {
-
     const displayFrame = streamBoxRef.current;
-    const videoFrames = document.getElementsByClassName("video__container");
     const clickedElement = e.currentTarget;
 
+    // Check if clickedElement is a valid DOM node
+    if (!(clickedElement instanceof Node)) {
+      console.error("Clicked element is not a valid node:", clickedElement);
+      return; // Exit if not a valid node
+    }
+
+    // Check if the clicked element is already displayed
     if (displayFrame.firstChild && displayFrame.firstChild.id === clickedElement.id) {
       // Reset the display frame and resize all videos back to normal
       displayFrame.style.display = "none";
+      setIsExpanded(false);
 
-      // Only append if it's not already a child
       const originalContainer = document.getElementById("streams__container");
+      // Reattach the clickedElement back to the original container if needed
       if (clickedElement && originalContainer && !originalContainer.contains(clickedElement)) {
         originalContainer.appendChild(clickedElement);
-        setIsExpanded(false)
-
       }
       console.log("Not Expanded");
 
       // Reset dimensions for all videos
-      for (let i = 0; i < videoFrames.length; i++) {
-        videoFrames[i].style.height = ""; // Reset height
-        videoFrames[i].style.width = ""; // Reset width
-      }
-
+      Array.from(document.getElementsByClassName("video__container")).forEach(videoFrame => {
+        videoFrame.style.height = ""; // Reset height
+        videoFrame.style.width = ""; // Reset width
+      });
 
     } else {
-
       // Check if the display frame already has a video
       if (displayFrame.firstChild) {
-        // If a video is already displayed, do nothing and return
         console.log("Video is already expanded. Click to view is disabled.");
-        return; // Exit the function if already expanded
+        return; // Exit if a video is already expanded
       }
 
       console.log("Expanded");
@@ -874,18 +811,19 @@ const Room = () => {
 
       // Display the clicked video in expanded mode
       displayFrame.style.display = "block";
-      displayFrame.appendChild(clickedElement);
+      displayFrame.appendChild(clickedElement); // Append only if valid
       userIdInDisplayFrame.current = clickedElement.id;
 
       // Resize other videos to small size
-      for (let i = 0; i < videoFrames.length; i++) {
-        if (videoFrames[i].id !== userIdInDisplayFrame.current) {
-          videoFrames[i].style.height = "100px";
-          videoFrames[i].style.width = "100px";
+      Array.from(document.getElementsByClassName("video__container")).forEach(videoFrame => {
+        if (videoFrame.id !== userIdInDisplayFrame.current) {
+          videoFrame.style.height = "100px";
+          videoFrame.style.width = "100px";
         }
-      }
+      });
     }
   };
+
 
 
 
@@ -1297,7 +1235,22 @@ const Room = () => {
             </div>
 
 
-            <div id="streams__container"></div>
+            <div id="streams__container">
+              {users.map(user => (
+                <UserContainer
+                  key={user.uid}
+                  uid={user.uid}
+                  displayName={user.displayName}
+                  micOn={user.micOn}
+                  cameraOn={user.cameraOn}
+                  onClick={expandVideoFrame} // Ensure this function is properly bound
+                />
+
+              ))}
+            </div>
+
+
+
           </div>
         </main>
       </Main>
