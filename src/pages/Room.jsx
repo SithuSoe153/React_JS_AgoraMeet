@@ -262,6 +262,11 @@ const Room = () => {
 
 
 
+  useEffect(() => {
+    console.log("Users array updated:", users);
+  }, [users]);
+
+
 
   // 
 
@@ -404,6 +409,8 @@ const Room = () => {
   // Initialize RTM when component mounts
   useEffect(() => {
 
+    console.log("RTM Hitt");
+
     const initRTM = async () => {
 
       const chatUserName = displayName; // Replace with the actual user name
@@ -447,33 +454,74 @@ const Room = () => {
 
 
   useEffect(() => {
+    console.log('RTC Init Hit');
+
     const init = async () => {
-      // Initializing RTC client
-      client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+      try {
+        // Initializing RTC client
+        client.current = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
-      // Fetch meeting details, tokens, etc.
-      const meetingDetails = await fetchMeetingDetails();
-      const { token: rtcToken, channelName } = meetingDetails;
+        // Fetch meeting details, tokens, etc.
+        const meetingDetails = await fetchMeetingDetails();
+        const { token: rtcToken, channelName } = meetingDetails;
 
-      console.log("checker", formattedUid);
+        console.log("User ID:", formattedUid);
 
+        // Join the RTC channel
+        await client.current.join(rtcToken, channelName, null, formattedUid);
 
-      // Join the RTC channel
-      await client.current.join(rtcToken, channelName, null, formattedUid);
+        // Add the joined user to the set
+        setJoinedUsers(prev => new Set(prev.add(formattedUid)));
 
-      // Add the joined user to the set
-      setJoinedUsers(prev => new Set(prev.add(formattedUid)));
+        // Event listeners
+        client.current.on("user-published", handleUserPublished);
+        client.current.on("user-unpublished", handleUserUnpublished);
+        client.current.on("user-left", handleUserLeft);
+        client.current.on("user-joined", handleUserJoined);
 
-      // Event listeners
-      client.current.on("user-published", handleUserPublished);
-      client.current.on("user-unpublished", handleUserUnpublished);
-      client.current.on("user-left", handleUserLeft);
+        // Handle mute/unmute audio events
+        client.current.on("mute-audio", (user) => {
+          console.log(`User muted audio: ${user.uid}`);
+          setUsers(prevUsers =>
+            prevUsers.map(u =>
+              u.uid === user.uid ? { ...u, micOn: false } : u
+            )
+          );
+        });
 
-      // Listen for users joining (without media published)
-      client.current.on("user-joined", handleUserJoined);
+        client.current.on("unmute-audio", (user) => {
+          console.log(`User unmuted audio: ${user.uid}`);
+          setUsers(prevUsers =>
+            prevUsers.map(u =>
+              u.uid === user.uid ? { ...u, micOn: true } : u
+            )
+          );
+        });
 
-      setJoined(true);
-      joinStream();
+        // Handle mute/unmute video events
+        client.current.on("mute-video", (user) => {
+          console.log(`User muted video: ${user.uid}`);
+          setUsers(prevUsers =>
+            prevUsers.map(u =>
+              u.uid === user.uid ? { ...u, cameraOn: false } : u
+            )
+          );
+        });
+
+        client.current.on("unmute-video", (user) => {
+          console.log(`User unmuted video: ${user.uid}`);
+          setUsers(prevUsers =>
+            prevUsers.map(u =>
+              u.uid === user.uid ? { ...u, cameraOn: true } : u
+            )
+          );
+        });
+
+        setJoined(true);
+        await joinStream();
+      } catch (error) {
+        console.error("Error during RTC initialization:", error);
+      }
     };
 
     init();
@@ -482,9 +530,18 @@ const Room = () => {
       // Clean up on unmount
       if (client.current) {
         client.current.leave();
+        client.current.off("user-published", handleUserPublished);
+        client.current.off("user-unpublished", handleUserUnpublished);
+        client.current.off("user-left", handleUserLeft);
+        client.current.off("user-joined", handleUserJoined);
+        client.current.off("mute-audio");
+        client.current.off("unmute-audio");
+        client.current.off("mute-video");
+        client.current.off("unmute-video");
       }
     };
   }, []);
+
 
 
 
@@ -512,6 +569,13 @@ const Room = () => {
         console.warn("No tracks to publish.");
       }
 
+      AgoraRTC.onAutoplayFailed = () => {
+        console.warn("Autoplay failed. Resuming AudioContext on user interaction.");
+        document.addEventListener("click", () => {
+          AgoraRTC.resumeAudioContext();
+        }, { once: true });
+      };
+
       const newUser = {
         uid: 'local', // Use a unique identifier for the local user
         displayName: displayName,
@@ -519,8 +583,17 @@ const Room = () => {
         cameraOn: cameraOn,
       };
 
-      setUsers((prevUsers) => [...prevUsers, newUser]);
+      setUsers((prevUsers) => {
+        // Check if the user already exists
+        const userExists = prevUsers.some(user => user.uid === newUser.uid);
+        if (userExists) {
+          console.log("User already exists, skipping creation.");
+          return prevUsers; // Return the previous state without adding the new user
+        }
+        return [...prevUsers, newUser]; // Add the new user if not found
+      });
 
+      console.log("Join Stream Hit");
     } catch (error) {
       console.error("Error joining stream:", error);
     }
@@ -536,31 +609,31 @@ const Room = () => {
     console.log(`User joined: ${user.uid}`);
 
     setUsers((prevUsers) => {
-      const userIndex = prevUsers.findIndex((u) => u.uid === user.uid);
+      const userExists = prevUsers.some((u) => u.uid === user.uid);
 
-      if (userIndex !== -1) {
-        // If the user already exists, update their info
-        const updatedUser = {
-          ...prevUsers[userIndex],
+      if (userExists) {
+        console.log(`User ${user.uid} already exists, updating information.`);
+
+        return prevUsers.map((u) =>
+          u.uid === user.uid
+            ? {
+              ...u,
+              micOn: false, // Default mic state
+              cameraOn: false, // Default camera state
+            }
+            : u
+        );
+      } else {
+        // Add the new user
+        console.log(`Adding new user ${user.uid}.`);
+        const newUser = {
+          uid: user.uid,
+          displayName: formattedUid,
           micOn: false,
           cameraOn: false,
         };
-        return [
-          ...prevUsers.slice(0, userIndex),
-          updatedUser,
-          ...prevUsers.slice(userIndex + 1),
-        ];
+        return [...prevUsers, newUser];
       }
-
-      // Otherwise, add the new user
-      const newUser = {
-        uid: user.uid,
-        displayName: formattedUid,
-        micOn: false,
-        cameraOn: false,
-      };
-
-      return [...prevUsers, newUser];
     });
   };
 
@@ -606,32 +679,31 @@ const Room = () => {
   const handleUserPublished = async (user, mediaType) => {
     console.log(`User published: ${user.uid}, MediaType: ${mediaType}`);
 
-    // Ensure the user exists before trying to update
-    setUsers((prevUsers) => {
-      return prevUsers.map((u) =>
+    // Update state for user mic/camera status
+    setUsers(prevUsers =>
+      prevUsers.map(u =>
         u.uid === user.uid
           ? {
             ...u,
-            micOn: mediaType === "audio" && user.audioTrack ? true : u.micOn,
-            cameraOn: mediaType === "video" && user.videoTrack ? true : u.cameraOn,
+            micOn: mediaType === "audio" ? true : u.micOn,
+            cameraOn: mediaType === "video" ? true : u.cameraOn,
           }
           : u
-      );
-    });
+      )
+    );
 
     try {
       await client.current.subscribe(user, mediaType);
-      const hasVideoTrack = mediaType === "video" && user.videoTrack;
-      const hasAudioTrack = mediaType === "audio" && user.audioTrack;
 
-      if (hasVideoTrack) {
+      // If video track exists, play it
+      if (mediaType === "video" && user.videoTrack) {
         user.videoTrack.play(`user-${user.uid}`);
       }
 
-      if (hasAudioTrack) {
+      // If audio track exists, play it
+      if (mediaType === "audio" && user.audioTrack) {
         user.audioTrack.play();
       }
-
     } catch (error) {
       console.error(`Error handling user published: ${error}`);
     }
@@ -641,72 +713,34 @@ const Room = () => {
 
 
 
+
   // Handle when the user stops publishing 
   const handleUserUnpublished = async (user, mediaType) => {
     console.log(`User unpublished: ${user.uid}, MediaType: ${mediaType}`);
 
-    if (mediaType === "toggle") {
-      // If the video is unpublished, collapse the expanded video
-      if (isExpanded && userIdInDisplayFrame.current === `user-container-${user.uid}`) {
-        console.log("Collapsing video frame as the user stopped sharing.");
-        const displayFrame = streamBoxRef.current;
-        displayFrame.style.display = "none"; // Hide the display frame
-        setIsExpanded(false);
+    // Update state to reflect mic/camera off
+    setUsers(prevUsers =>
+      prevUsers.map(u =>
+        u.uid === user.uid
+          ? {
+            ...u,
+            micOn: mediaType === "audio" ? false : u.micOn,
+            cameraOn: mediaType === "video" ? false : u.cameraOn,
+          }
+          : u
+      )
+    );
 
-        // Reset the layout of all other videos
-        const videoFrames = document.getElementsByClassName("video__container");
-        for (let i = 0; i < videoFrames.length; i++) {
-          videoFrames[i].style.height = ""; // Reset height
-          videoFrames[i].style.width = ""; // Reset width
-        }
+    if (mediaType === "video") {
+      console.log(`User ${user.uid} stopped sharing video`);
+    }
 
-
-        // Optionally, remove the user's video container if no longer needed
-        const playerContainer = document.getElementById(`user-container-${user.uid}`);
-        if (playerContainer) {
-          playerContainer.remove();
-        }
-      }
+    if (mediaType === "audio") {
+      console.log(`User ${user.uid} stopped sharing audio`);
     }
   };
 
 
-
-
-  // Function to create user container
-  const createUserContainer = (uid) => {
-    const playerId = `user-container-${uid}`;
-
-    // Check again here if the container exists before creating
-    if (document.getElementById(playerId)) {
-      console.log(`User container for ${uid} already exists, skipping creation.`);
-      return; // Skip creating if it already exists
-    }
-
-    const player = document.createElement("div");
-    player.className = "video__container";
-    player.id = playerId;
-    player.onclick = expandVideoFrame;
-
-    // Initial message for the user
-    player.innerHTML = `
-    <div class="video-player" id="user-${uid}"></div>
-    <div class="video-name">${uid.replace(/_/g, " ")}</div>
-    <div class="placeholder" id="placeholder-${uid}" style="display: block;">Camera and Mic are Off</div>
-
-    <div class="status-icons" id="status-icons-${uid}">
-      <span id="camera-status-${uid}" class="camera-status">📷</span>
-      <span id="mic-status-${uid}" class="mic-status">🎤</span>
-      <span id="camera-status-${uid}" class="camera-status">🔇</span>
-
-    </div>
-
-
-  `;
-
-    document.getElementById("streams__container").appendChild(player);
-    console.log("User container created.");
-  };
 
 
 
@@ -714,54 +748,23 @@ const Room = () => {
   const handleUserLeft = (user) => {
     console.log(`User left: ${user.uid}`);
 
-    // If the user in the expanded frame left, collapse the expanded video
-    if (isExpanded && userIdInDisplayFrame.current === `user-container-${user.uid}`) {
-      console.log("Collapsing video frame as the user who left was in expanded mode.");
-      const displayFrame = streamBoxRef.current;
-      displayFrame.style.display = "none"; // Hide the display frame
-      setIsExpanded(false); // Update the expanded state
-      userIdInDisplayFrame.current = null; // Clear the current expanded user reference
-
-      // Reset the layout of all other videos
-      const videoFrames = document.getElementsByClassName("video__container");
-      for (let i = 0; i < videoFrames.length; i++) {
-        videoFrames[i].style.height = ""; // Reset height
-        videoFrames[i].style.width = ""; // Reset width
-      }
-    }
+    // Remove the user from the users state
+    setUsers(prevUsers => prevUsers.filter(u => u.uid !== user.uid));
 
     // Remove the user's video container
-    const playerContainer = document.getElementById(`user-container-${user.uid}`);
-
-    const streamBox = document.getElementById("stream__box");
-
-    if (streamBox) {
-      const computedStyle = window.getComputedStyle(streamBox);
-      const displayValue = computedStyle.display;
-
-      if (displayValue === "block") {
-        console.log("stream__box is displayed as block, expanding the video frame");
-
-        if (playerContainer) {
-          expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
-        }
-      } else {
-        console.log("stream__box is not in block display mode");
-      }
-    }
-
-
-
-    if (playerContainer) {
-      playerContainer.remove();
-    }
+    // const playerContainer = document.getElementById(`user-container-${user.uid}`);
+    // if (playerContainer) {
+    //   playerContainer.remove();
+    // }
 
     // Update the joined users set
-    setJoinedUsers((prev) => {
+    setJoinedUsers(prev => {
       prev.delete(user.uid);
       return new Set(prev);
     });
   };
+
+
 
 
   // ================ End
@@ -772,10 +775,10 @@ const Room = () => {
   // Function to expand/collapse video frames
   const expandVideoFrame = (e) => {
     const displayFrame = streamBoxRef.current;
-    const clickedElement = e.currentTarget;
+    const clickedElement = e?.currentTarget || userIdInDisplayFrame.current; // Use fallback if event is missing
 
     // Check if clickedElement is a valid DOM node
-    if (!(clickedElement instanceof Node)) {
+    if (!clickedElement || !(clickedElement instanceof Node)) {
       console.error("Clicked element is not a valid node:", clickedElement);
       return; // Exit if not a valid node
     }
@@ -825,19 +828,13 @@ const Room = () => {
   };
 
 
-
-
   const toggleFullscreen = (e) => {
     const displayFrame = streamBoxRef.current;
 
+    // Store the current video element being expanded for use when exiting fullscreen
+    const clickedElement = e?.currentTarget || userIdInDisplayFrame.current;
+
     if (!document.fullscreenElement) {
-
-
-      const videoContainers = document.getElementsByClassName("video__container");
-      for (let container of videoContainers) {
-        container.onclick = toggleFullscreen;
-      }
-
       // Enter fullscreen
       setIsFullscreen(true);
       if (displayFrame.requestFullscreen) {
@@ -850,30 +847,32 @@ const Room = () => {
         displayFrame.msRequestFullscreen();
       }
     } else {
-
-      const videoContainers = document.getElementsByClassName("video__container");
-      for (let container of videoContainers) {
-        container.onclick = expandVideoFrame;
-      }
-
       // Exit fullscreen and reset video frame
       setIsFullscreen(false);
       if (document.exitFullscreen) {
         document.exitFullscreen().then(() => {
           // Reset to small view after exiting fullscreen
-          expandVideoFrame(e);
+          if (clickedElement) {
+            expandVideoFrame({ currentTarget: clickedElement });
+          }
         });
       } else if (document.mozCancelFullScreen) { // For Firefox
         document.mozCancelFullScreen().then(() => {
-          expandVideoFrame(e);
+          if (clickedElement) {
+            expandVideoFrame({ currentTarget: clickedElement });
+          }
         });
       } else if (document.webkitExitFullscreen) { // For Chrome, Safari, and Opera
         document.webkitExitFullscreen().then(() => {
-          expandVideoFrame(e);
+          if (clickedElement) {
+            expandVideoFrame({ currentTarget: clickedElement });
+          }
         });
       } else if (document.msExitFullscreen) { // For IE/Edge
         document.msExitFullscreen().then(() => {
-          expandVideoFrame(e);
+          if (clickedElement) {
+            expandVideoFrame({ currentTarget: clickedElement });
+          }
         });
       }
     }
@@ -901,6 +900,13 @@ const Room = () => {
           setLocalTracks((prevTracks) => [null, prevTracks[1]]);
         }
         setMicOn(false);
+
+        // Update mic state for the local user
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.uid === 'local' ? { ...user, micOn: false } : user
+          )
+        );
         console.log("Microphone disabled.");
       } else {
         // If the mic is off, create a new microphone audio track
@@ -908,6 +914,13 @@ const Room = () => {
         setLocalTracks((prevTracks) => [newAudioTrack, prevTracks[1]]);
         await client.current.publish([newAudioTrack]);
         setMicOn(true);
+
+        // Update mic state for the local user
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.uid === 'local' ? { ...user, micOn: true } : user
+          )
+        );
         console.log("Microphone enabled.");
       }
     } catch (error) {
@@ -925,36 +938,46 @@ const Room = () => {
           setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
         }
 
-        await client.current.publish([localTracks[1]]); // Publish the video track
-        localTracks[1].play("user-local"); // Play the local video
-
-        const placeholder = document.getElementById("placeholder-local");
-        if (placeholder) placeholder.style.display = "none";
+        if (!sharingScreen) {
+          await client.current.publish([localTracks[1]]); // Publish the video track
+          localTracks[1].play("user-local"); // Play the local video
+        }
 
         setCameraOn(true);
         setBothOff(!micOn && false);
+
+        // Update camera state for the local user
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.uid === 'local' ? { ...user, cameraOn: true } : user
+          )
+        );
         console.log("Camera turned on.");
       } else {
         // Camera is on, so we turn it off
         if (localTracks[1]) {
-          localTracks[1].stop(); // Stop sending video frames, turns off the camera
-          await client.current.unpublish([localTracks[1]]); // Unpublish the video track
-          localTracks[1].close();  // Fully close the track and release the camera
-          localTracks[1] = null; // Set to null to ensure new track is created next time
+          localTracks[1].stop();
+          await client.current.unpublish([localTracks[1]]);
+          localTracks[1].close();
+          localTracks[1] = null;
         }
 
         setCameraOn(false);
         setBothOff(!micOn && true);
 
-        const placeholder = document.getElementById("placeholder-local");
-        if (placeholder) placeholder.style.display = "block";
-
+        // Update camera state for the local user
+        setUsers((prevUsers) =>
+          prevUsers.map((user) =>
+            user.uid === 'local' ? { ...user, cameraOn: false } : user
+          )
+        );
         console.log("Camera turned off.");
       }
     } catch (error) {
       console.error("Error toggling the camera: ", error);
     }
   };
+
 
 
   const toggleScreen = async () => {
