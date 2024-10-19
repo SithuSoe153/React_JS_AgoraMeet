@@ -695,9 +695,31 @@ const Room = () => {
     try {
       await client.current.subscribe(user, mediaType);
 
+
       // If video track exists, play it
       if (mediaType === "video" && user.videoTrack) {
         user.videoTrack.play(`user-${user.uid}`);
+
+        // Automatically expand the video when a video track is published
+        const playerContainer = document.getElementById(`user-container-${user.uid}`);
+
+        const streamBox = document.getElementById("stream__box");
+
+        if (streamBox) {
+          const computedStyle = window.getComputedStyle(streamBox);
+          const displayValue = computedStyle.display;
+
+          if (displayValue === "none") {
+            console.log("stream__box is displayed as block, expanding the video frame");
+
+            if (playerContainer) {
+              expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+            }
+          } else {
+            console.log("stream__box is not in block display mode");
+          }
+        }
+
       }
 
       // If audio track exists, play it
@@ -732,6 +754,27 @@ const Room = () => {
     );
 
     if (mediaType === "video") {
+
+      // Automatically expand the video when a video track is published
+      const playerContainer = document.getElementById(`user-container-${user.uid}`);
+
+      const streamBox = document.getElementById("stream__box");
+
+      if (streamBox) {
+        const computedStyle = window.getComputedStyle(streamBox);
+        const displayValue = computedStyle.display;
+
+        if (displayValue === "block") {
+          console.log("stream__box is displayed as block, expanding the video frame");
+
+          if (playerContainer) {
+            expandVideoFrame({ currentTarget: playerContainer }); // Pass the screen container for expansion
+          }
+        } else {
+          console.log("stream__box is not in block display mode");
+        }
+      }
+
       console.log(`User ${user.uid} stopped sharing video`);
     }
 
