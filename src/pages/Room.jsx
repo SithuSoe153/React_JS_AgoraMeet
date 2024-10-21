@@ -166,30 +166,32 @@ const Room = () => {
     }
   };
 
-
   let addBotMessageToDom = (botMessage) => {
     // Select only the messages section for chat
     let messagesWrapper = document.querySelector("#chat_messages");
-
+  
     // Return early if there's no valid chat section
     if (!messagesWrapper) return;
-
-    let newMessage = `
-      <div class="message__wrapper">
-        <div class="message__body__bot">
-          <strong class="message__author__bot">🤖 Meet.MyDay Bot</strong>
-          <p class="message__text__bot">${botMessage}</p>
-        </div>
-      </div>`;
-
-    messagesWrapper.insertAdjacentHTML("beforeend", newMessage);
-
+  
+    // Create the new message element
+    const newMessage = document.createElement('div');
+    newMessage.className = 'message__wrapper';
+    newMessage.innerHTML = `
+      <div class="message__body__bot">
+        <strong class="message__author__bot">🤖 Meet.MyDay Bot</strong>
+        <p class="message__text__bot">${botMessage}</p>
+      </div>
+    `;
+  
+    messagesWrapper.appendChild(newMessage);
+  
+    // Scroll to the last message
     let lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
     if (lastMessage) {
-      lastMessage.scrollIntoView();
+      lastMessage.scrollIntoView({ behavior: "smooth" });
     }
   };
-
+  
 
 
 
@@ -221,11 +223,16 @@ const Room = () => {
   const sendMessage = async (e) => {
     e.preventDefault();
     if (messageText.trim() && channel) {
-      await channel.sendMessage({ text: messageText });
-      setMessages((prevMessages) => [...prevMessages, { text: messageText, senderId: 'You' }]);
-      setMessageText('');
+      try {
+        await channel.sendMessage({ text: messageText });
+        setMessages((prevMessages) => [...prevMessages, { text: messageText, senderId: 'You' }]);
+        setMessageText('');
+      } catch (error) {
+        console.error("Failed to send message:", error);
+      }
     }
   };
+  
 
 
 
@@ -254,12 +261,13 @@ const Room = () => {
 
   useEffect(() => {
     // Scroll to the latest message when the messages array is updated
-    const lastMessage = document.querySelector("#messages .message__wrapper:last-child");
+    const lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
     if (lastMessage) {
       lastMessage.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]); // The effect runs every time 'messages' changes
 
+  
 
 
   useEffect(() => {
@@ -433,6 +441,7 @@ const Room = () => {
       rtmChannel.on('ChannelMessage', ({ text }, senderId) => {
         setMessages((prevMessages) => [...prevMessages, { text, senderId }]);
       });
+
     };
 
     initRTM();
@@ -448,7 +457,6 @@ const Room = () => {
       }
     };
   }, []);
-
 
 
 
@@ -540,7 +548,7 @@ const Room = () => {
         client.current.off("unmute-video");
       }
     };
-  }, []);
+  }, [formattedUid]); // Dependency on formattedUid (if it changes dynamically)
 
 
 
