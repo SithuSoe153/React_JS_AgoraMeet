@@ -36,6 +36,9 @@ import MuiAppBar from '@mui/material/AppBar';
 import LeaveMeetingOverlay from '../components/LeaveMeetingOverlay';
 import UserContainer from "../components/UserContainers/UserContainer";
 
+import { MessageList, MessageInput, BotMessage } from "../components/Messages/MessageComponents"
+import MemberItem from "../components/Messages/MemberComponsnt";
+
 const appId = '19547e2b1603452688a040cc0a219aea';
 const drawerWidth = 400;
 
@@ -129,6 +132,18 @@ const Room = () => {
     setOpen(true);
   };
 
+
+
+  useEffect(() => {
+    if (open) {
+      const lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
+      if (lastMessage) {
+        lastMessage.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [open]);
+
+
   const handleDrawerClose = () => {
     setOpen(false);
   };
@@ -166,32 +181,16 @@ const Room = () => {
     }
   };
 
-  let addBotMessageToDom = (botMessage) => {
-    // Select only the messages section for chat
-    let messagesWrapper = document.querySelector("#chat_messages");
-  
-    // Return early if there's no valid chat section
-    if (!messagesWrapper) return;
-  
-    // Create the new message element
-    const newMessage = document.createElement('div');
-    newMessage.className = 'message__wrapper';
-    newMessage.innerHTML = `
-      <div class="message__body__bot">
-        <strong class="message__author__bot">🤖 Meet.MyDay Bot</strong>
-        <p class="message__text__bot">${botMessage}</p>
-      </div>
-    `;
-  
-    messagesWrapper.appendChild(newMessage);
-  
-    // Scroll to the last message
-    let lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
-    if (lastMessage) {
-      lastMessage.scrollIntoView({ behavior: "smooth" });
-    }
+
+  const addBotMessageToDom = (botMessage) => {
+    // Use the bot message component instead of manipulating the DOM directly
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { text: botMessage, senderId: '🤖 Meet.MyDay Bot', isBot: true } // Add a flag to differentiate bot messages
+    ]);
   };
-  
+
+
 
 
 
@@ -219,7 +218,6 @@ const Room = () => {
   };
 
 
-
   const sendMessage = async (e) => {
     e.preventDefault();
     if (messageText.trim() && channel) {
@@ -232,7 +230,8 @@ const Room = () => {
       }
     }
   };
-  
+
+
 
 
 
@@ -259,16 +258,14 @@ const Room = () => {
   // }, [open]);
 
 
+
   useEffect(() => {
     // Scroll to the latest message when the messages array is updated
     const lastMessage = document.querySelector("#chat_messages .message__wrapper:last-child");
     if (lastMessage) {
       lastMessage.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]); // The effect runs every time 'messages' changes
-
-  
-
+  }, [messages]);
 
   useEffect(() => {
     console.log("Users array updated:", users);
@@ -340,7 +337,17 @@ const Room = () => {
         return (
           <Box>
             <section id="members__container">
-              <div id="member__list"></div>
+              <div id="member__list">
+                {members.map((member) => (
+                  <MemberItem
+                    key={member.id} // Ensure this is unique
+                    memberId={member.id}
+                    name={member.name}
+                    cameraOn={member.cameraOn} // Assume these properties are in your member object
+                    micOn={member.micOn}       // Adjust according to your member structure
+                  />
+                ))}
+              </div>
             </section>
           </Box>
         );
@@ -349,27 +356,28 @@ const Room = () => {
         return (
           <Box>
             <section id="messages__container">
-              <div id="chat_messages"> {/* Changed ID here */}
-                {messages.map((msg, index) => (
-                  <div key={index} className="message__wrapper">
-                    <div className="message__body">
-                      <strong className="message__author">{msg.senderId}</strong>
-                      <p className="message__text">{msg.text}</p>
-                    </div>
-                  </div>
-                ))}
+              <div id="chat_messages">
+                {messages.map((msg, index) => {
+                  if (msg.isBot) {
+                    // Render the BotMessage component for bot messages
+                    return <BotMessage key={index} botMessage={msg.text} />;
+                  } else {
+                    // Render normal messages
+                    return (
+                      <div key={index} className="message__wrapper">
+                        <div className="message__body">
+                          <strong className="message__author">{msg.senderId}</strong>
+                          <p className="message__text">{msg.text}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
               </div>
-              <form id="message__form" onSubmit={sendMessage}>
-                <input
-                  type="text"
-                  name="message"
-                  placeholder="Send a message..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                />
-              </form>
+              <MessageInput messageText={messageText} setMessageText={setMessageText} sendMessage={sendMessage} />
             </section>
           </Box>
+
         );
 
     }
@@ -614,6 +622,8 @@ const Room = () => {
 
     // Display bot message welcoming the user
     addBotMessageToDom(`Welcome to the room ${formattedUid}! 👋`);
+    addMemberToDom(user.uid)
+
     console.log(`User joined: ${user.uid}`);
 
     setUsers((prevUsers) => {
@@ -648,24 +658,38 @@ const Room = () => {
 
 
 
-  let addMemberToDom = async (MemberId) => {
 
-    let formattedUid = MemberId.replace(/_/g, " ");
-    let name = formattedUid || MemberId; // Fallback to MemberId if name is undefined
+  const addMemberToDom = (memberId) => {
 
-    if (name === undefined) {
-      console.warn(`Name attribute is not defined for user: ${MemberId}`);
+    // Prevent adding the same member again
+    if (!members.some(member => member.id === memberId)) {
+      let formattedUid = memberId.replace(/_/g, " ");
+      let name = formattedUid || memberId;
+
+      setMembers((prevMembers) => [...prevMembers, { id: memberId, name, cameraOn: true, micOn: true }]);
     }
-
-    let membersWrapper = document.getElementById("member__list");
-    let memberItem = `
-      <div class="member__wrapper" id="member__${MemberId}__wrapper">
-        <span class="green__icon"></span>
-        <p class="member_name">${name}</p>
-      </div>`;
-
-    // membersWrapper.insertAdjacentHTML("beforeend", memberItem);
   };
+
+  const removeMemberFromDom = (memberId) => {
+    setMembers((prevMembers) => prevMembers.filter(member => member.id !== memberId));
+    const formattedUid = memberId.replace(/_/g, " ");
+    const name = formattedUid || memberId;
+
+    addBotMessageToDom(`${name} has left the room.`);
+  };
+
+
+
+  const updateMemberStatus = (memberId, cameraOn, micOn) => {
+    setMembers((prevMembers) =>
+      prevMembers.map((member) =>
+        member.id === memberId ? { ...member, cameraOn, micOn } : member
+      )
+    );
+  };
+
+
+
 
 
   let updateMemberTotal = async (members) => {
@@ -746,7 +770,10 @@ const Room = () => {
 
   // Handle when the user stops publishing 
   const handleUserUnpublished = async (user, mediaType) => {
+
     console.log(`User unpublished: ${user.uid}, MediaType: ${mediaType}`);
+
+    // removeMemberFromDom(user.uid)
 
     // Update state to reflect mic/camera off
     setUsers(prevUsers =>
@@ -798,6 +825,8 @@ const Room = () => {
   // Handle when a user leaves the meeting
   const handleUserLeft = (user) => {
     console.log(`User left: ${user.uid}`);
+
+    removeMemberFromDom(user.uid)
 
     // Remove the user from the users state
     setUsers(prevUsers => prevUsers.filter(u => u.uid !== user.uid));
@@ -940,7 +969,6 @@ const Room = () => {
   // };
 
 
-
   const toggleMic = async () => {
     try {
       if (micOn) {
@@ -951,7 +979,7 @@ const Room = () => {
           setLocalTracks((prevTracks) => [null, prevTracks[1]]);
         }
         setMicOn(false);
-
+  
         // Update mic state for the local user
         setUsers((prevUsers) =>
           prevUsers.map((user) =>
@@ -965,7 +993,7 @@ const Room = () => {
         setLocalTracks((prevTracks) => [newAudioTrack, prevTracks[1]]);
         await client.current.publish([newAudioTrack]);
         setMicOn(true);
-
+  
         // Update mic state for the local user
         setUsers((prevUsers) =>
           prevUsers.map((user) =>
@@ -978,7 +1006,7 @@ const Room = () => {
       console.error("Error toggling microphone:", error);
     }
   };
-
+  
   const toggleCamera = async () => {
     try {
       if (!cameraOn) {
@@ -988,15 +1016,15 @@ const Room = () => {
           localTracks[1] = await AgoraRTC.createCameraVideoTrack();
           setLocalTracks((prevTracks) => [prevTracks[0], localTracks[1]]);
         }
-
+  
         if (!sharingScreen) {
           await client.current.publish([localTracks[1]]); // Publish the video track
           localTracks[1].play("user-local"); // Play the local video
         }
-
+  
         setCameraOn(true);
         setBothOff(!micOn && false);
-
+  
         // Update camera state for the local user
         setUsers((prevUsers) =>
           prevUsers.map((user) =>
@@ -1007,15 +1035,15 @@ const Room = () => {
       } else {
         // Camera is on, so we turn it off
         if (localTracks[1]) {
-          localTracks[1].stop();
           await client.current.unpublish([localTracks[1]]);
+          await localTracks[1].stop();
           localTracks[1].close();
           localTracks[1] = null;
         }
-
+  
         setCameraOn(false);
         setBothOff(!micOn && true);
-
+  
         // Update camera state for the local user
         setUsers((prevUsers) =>
           prevUsers.map((user) =>
@@ -1028,7 +1056,7 @@ const Room = () => {
       console.error("Error toggling the camera: ", error);
     }
   };
-
+  
 
 
   const toggleScreen = async () => {
@@ -1255,9 +1283,9 @@ const Room = () => {
               {activeTab === 'info' && open ? <InfoIcon /> : <InfoIcon />}
             </GradientIconButton>
 
-            {/* <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
+            <GradientIconButton onClick={() => handleTabChange('people')} isSelected={activeTab === 'people'}>
               {activeTab === 'people' && open ? <PeopleAltIcon /> : <PeopleIcon />}
-            </GradientIconButton> */}
+            </GradientIconButton>
 
             <GradientIconButton onClick={() => handleTabChange('chat')} isSelected={activeTab === 'chat'}>
               {activeTab === 'chat' && open ? <ChatOffIcon /> : <ChatIcon />}
